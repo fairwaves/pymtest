@@ -259,6 +259,46 @@ def measure_ber(dev, bts):
 
 
 ###############################
+#   Main test run function
+###############################
+
+
+def run_tests():
+    # TODO: Check GPS LEDs, 1pps, NMEA
+
+    # TODO: Calibrate Tx DC offset
+
+    # TODO: Calibrate frequency
+    #calibrate_freq_error(cmd)
+
+    # Prepare for BCCH measurements
+    res = test_bcch_presence(cmd)
+    if res != TEST_OK:
+        return res
+
+    # BCCH measurements
+    print "Manual test - Control Channel"
+    test_burst_avg_power(cmd)
+    test_freq_error(cmd)
+    test_phase_err_pk(cmd)
+    test_phase_err_avg(cmd)
+
+    # Prepare for TCH tests
+    res = test_enable_tch_loopback(cmd, bts)
+    if res != TEST_OK:
+        return res
+
+    # Phase, power profile and spectrum measurements.
+    cmd.print_man_phase_freq_info(True)
+    cmd.print_man_power(True)
+    cmd.print_man_spectrum_modulation(True)
+    cmd.print_man_spectrum_switching(True)
+
+    # BER measurements
+    #measure_ber(cmd, bts)
+
+
+###############################
 #   Command line args parsing
 ###############################
 
@@ -303,35 +343,4 @@ cmd57_configure(cmd, args.arfcn)
 #   Test execution
 #
 
-# TODO: Check GPS LEDs, 1pps, NMEA
-
-# TODO: Calibrate Tx DC offset
-
-# TODO: Calibrate frequency
-#calibrate_freq_error(cmd)
-
-# Prepare for BCCH measurements
-res = test_bcch_presence(cmd)
-if res != TEST_OK:
-    return res
-
-# BCCH measurements
-print "Manual test - Control Channel"
-test_burst_avg_power(cmd)
-test_freq_error(cmd)
-test_phase_err_pk(cmd)
-test_phase_err_avg(cmd)
-
-# Prepare for TCH tests
-res = test_enable_tch_loopback(cmd, bts)
-if res != TEST_OK:
-    return res
-
-# Phase, power profile and spectrum measurements.
-cmd.print_man_phase_freq_info(True)
-cmd.print_man_power(True)
-cmd.print_man_spectrum_modulation(True)
-cmd.print_man_spectrum_switching(True)
-
-# BER measurements
-#measure_ber(cmd, bts)
+run_tests()
