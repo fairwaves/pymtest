@@ -54,6 +54,10 @@ TEST_RESULT_NAMES = {
 
 # TODO: Merge TEST_NAMES and TEST_CHECKS into a single class
 TEST_NAMES = {
+    "tester_name": "Tester device name",
+    "tester_serial": "Tester system serial number",
+    "tester_version": "Tester system version",
+    "tester_options": "Tester installed options",
     "output_power": "TRX output power (dBm)",
     "bcch_presence": "BCCH detected",
     "burst_avg_power": "Burst avg powr (dBm)",
@@ -74,6 +78,10 @@ UMSITE_TM3_PARAMS = {
 }
 
 TEST_CHECKS = {
+    "tester_name": test_none_checker(),
+    "tester_serial": test_none_checker(),
+    "tester_version": test_none_checker(),
+    "tester_options": test_none_checker(),
     "output_power": test_minmax_checker(
         UMSITE_TM3_PARAMS["output_power_min"],
         UMSITE_TM3_PARAMS["output_power_max"]),
@@ -215,6 +223,20 @@ def cmd57_configure(cmd, arfcn):
     cmd.configure_spectrum_modulation(burst_num=10)
 
 
+@test_checker_decorator("tester_name")
+def test_tester_id(cmd):
+    id_str = cmd.identify()
+    name = id_str[0]+' '+id_str[1]
+    tr.check_test_result("tester_serial", id_str[2])
+    tr.check_test_result("tester_version", id_str[3])
+    return name
+
+
+@test_checker_decorator("tester_options")
+def test_tester_options(cmd):
+    return " ".join(cmd.ask_installed_options())
+
+
 @test_checker_decorator("output_power")
 def test_output_power(cmd):
     ''' Check output power level '''
@@ -268,6 +290,10 @@ def measure_ber(dev, bts):
 
 def run_tests():
     print("Starting tests.")
+
+    # Collect useful information about the CMD57
+    test_tester_id(cmd)
+    test_tester_options(cmd)
 
     # TODO: Check GPS LEDs, 1pps, NMEA
 
