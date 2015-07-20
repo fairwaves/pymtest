@@ -110,10 +110,10 @@ class TestResults:
 
     def set_test_result(self, testname, result, value=None):
         self.test_results[testname] = (result, value)
-        print("%20s:  %7s" % (TEST_NAMES.get(testname, testname),
-                              TEST_RESULT_NAMES[result]))
+        print "%40s:  %7s" % (TEST_NAMES.get(testname, testname),
+                              TEST_RESULT_NAMES[result]),
         if value is not None:
-            print(" (%s)\n" % str(value))
+            print " (%s)" % str(value)
 
     def check_test_result(self, testname, value):
         res = self.checks[testname](value)
