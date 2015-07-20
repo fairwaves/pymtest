@@ -117,7 +117,7 @@ class TestResults:
 
     def check_test_result(self, testname, value):
         res = self.checks[testname](value)
-        self.set_test_result(res)
+        self.set_test_result(testname, res, value)
         return res
 
     def get_test_result(self, testname):
