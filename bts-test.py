@@ -3,6 +3,7 @@ import paramiko
 from scpi.devices import cmd57_console as cmd57
 import atexit
 import argparse
+import traceback
 
 
 #######################
@@ -35,6 +36,9 @@ def test_minmax_checker(min, max):
 
 def test_none_checker():
     return lambda val: TEST_OK
+
+# Enable/disable debug mode
+_tests_debug = 1
 
 TEST_NA      = -1
 TEST_ABORTED = 0
@@ -136,6 +140,8 @@ def test_checker_decorator(testname):
                 val = func(*args, **kwargs)
                 res = tr.check_test_result(testname, val)
             except:
+                if _tests_debug:
+                    traceback.print_exc()
                 res = tr.set_test_result(testname, TEST_ABORTED)
             return res
         return wrapper
