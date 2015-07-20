@@ -225,7 +225,7 @@ def test_output_power(cmd):
 def test_bcch_presence(cmd):
     ''' Check BCCH presence '''
     cmd.switch_to_man_bbch()
-    return cmd.ask_sync_state() == "BBCH"
+    return cmd.ask_dev_state() == "BBCH"
 
 
 @test_checker_decorator("burst_avg_power")
