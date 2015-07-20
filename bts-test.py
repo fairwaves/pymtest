@@ -166,10 +166,6 @@ class BtsControlSsh:
             sftp.put('helper/'+f, self.tmpdir+'/'+f)
         sftp.close()
 
-        # CMD57 has sloppy time synchronization, so burst timing can drift
-        # by a few symbols
-        self.bts_set_maxdly(10)
-
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
         stdin, stdout, stderr = self.ssh.exec_command(
@@ -187,6 +183,7 @@ class BtsControlSsh:
 
     def bts_set_maxdly(self, val):
         ''' Set BTS TRX0 max timing advance '''
+        print("BTS: setting max delay to %d." % val)
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
             './osmobts-set-maxdly.py %d' % val)
@@ -254,7 +251,7 @@ def test_enable_tch_loopback(cmd, bts):
 def measure_ber(dev, bts):
     ''' BER measurements '''
     dev.print_ber_test_settings()
-    bts_en_loopback(bts)
+    bts.bts_en_loopback()
     dev.print_ber_test_result(True)
 
 
@@ -264,6 +261,8 @@ def measure_ber(dev, bts):
 
 
 def run_tests():
+    print("Starting tests.")
+
     # TODO: Check GPS LEDs, 1pps, NMEA
 
     # TODO: Calibrate Tx DC offset
@@ -332,9 +331,14 @@ tr = TestResults(TEST_CHECKS)
 #test_deps = TestDependencies()
 
 # Establish ssh connection with the BTS under test
+print("Establishing connection with the BTS.")
 bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
+# CMD57 has sloppy time synchronization, so burst timing can drift
+# by a few symbols
+bts.bts_set_maxdly(10)
 
 # Establish connection with CMD57 and configure it
+print("Establishing connection with the CMD57.")
 cmd = cmd57_init(args.cmd57_port)
 cmd.switch_to_man_bidl()
 cmd57_configure(cmd, args.arfcn)
