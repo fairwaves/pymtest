@@ -278,10 +278,9 @@ def test_enable_tch_loopback(cmd, bts):
     bts.bts_en_loopback()
 
 
-def measure_ber(dev, bts):
+def measure_ber(dev):
     ''' BER measurements '''
     dev.print_ber_test_settings()
-    bts.bts_en_loopback()
     dev.print_ber_test_result(True)
 
 
@@ -328,7 +327,7 @@ def run_tests():
     cmd.print_man_spectrum_switching(True)
 
     # BER measurements
-    #measure_ber(cmd, bts)
+    measure_ber(cmd)
 
 
 ###############################
