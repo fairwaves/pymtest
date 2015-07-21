@@ -186,14 +186,14 @@ class BtsControlSsh:
         ''' Enable loopbak in the BTS '''
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
-            './osmobts-en-loopback.py')
+            'python osmobts-en-loopback.py')
         print stdout.readlines()
 
     def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
         ''' Set BTS TRX0 slotmask '''
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
-            './osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
+            'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
             % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
         print stdout.readlines()
 
@@ -202,7 +202,7 @@ class BtsControlSsh:
         print("BTS: setting max delay to %d." % val)
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
-            './osmobts-set-maxdly.py %d' % val)
+            'python osmobts-set-maxdly.py %d' % val)
         print stdout.readlines()
 
 ###############################
