@@ -71,8 +71,8 @@ UMSITE_TM3_PARAMS = {
     "output_power_min": 34,  # dBm
     "output_power_max": 36,  # dBm
     "freq_error": 50,  # Hz
-    "phase_err_pk_min": 2.0,  # deg
-    "phase_err_pk_max": 6.0,  # deg
+    "phase_err_pk_min": 1.0,  # deg
+    "phase_err_pk_max": 10.0,  # deg
     "phase_err_avg_min": 0.5,  # deg
     "phase_err_avg_max": 2.0,  # deg
 }
