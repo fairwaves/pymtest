@@ -20,5 +20,6 @@ if __name__ == '__main__':
     appport = 4241
     vty = obscvty.VTYInteract(appstring, "127.0.0.1", appport)
     vty.command("enable")
+    vty.command("bts 0 trx 0 ts 2 lchan 0 activate")
     vty.command("bts 0 trx 0 ts 2 lchan 0 loopback")
 
