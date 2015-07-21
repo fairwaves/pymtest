@@ -220,7 +220,7 @@ def cmd57_configure(cmd, arfcn):
     ''' Configure the CMD57 '''
     cmd.configure_man(ccch_arfcn=arfcn, tch_arfcn=arfcn,
                       tch_ts=2, tsc=7,
-                      expected_power=37, tch_tx_power=-50,
+                      expected_power=37, tch_tx_power=-60,
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
 
