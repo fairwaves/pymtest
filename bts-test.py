@@ -114,6 +114,8 @@ class TestResults:
                               TEST_RESULT_NAMES[result]),
         if value is not None:
             print " (%s)" % str(value)
+        else:
+            print
 
     def check_test_result(self, testname, value):
         res = self.checks[testname](value)
