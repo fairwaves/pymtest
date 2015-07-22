@@ -4,6 +4,8 @@ from scpi.devices import cmd57_console as cmd57
 import atexit
 import argparse
 import traceback
+import re
+import json
 
 
 #######################
@@ -54,6 +56,9 @@ TEST_RESULT_NAMES = {
 
 # TODO: Merge TEST_NAMES and TEST_CHECKS into a single class
 TEST_NAMES = {
+    "bts_uname": "BTS system information",
+    "umtrx_serial": "UmTRX serial number",
+    "umtrx_autocalibrate": "UmTRX autocalibration",
     "tester_name": "Tester device name",
     "tester_serial": "Tester system serial number",
     "tester_version": "Tester system version",
@@ -78,6 +83,9 @@ UMSITE_TM3_PARAMS = {
 }
 
 TEST_CHECKS = {
+    "bts_uname": test_none_checker(),
+    "umtrx_serial": test_none_checker(),
+    "umtrx_autocalibrate": test_none_checker(),
     "tester_name": test_none_checker(),
     "tester_serial": test_none_checker(),
     "tester_version": test_none_checker(),
@@ -124,6 +132,10 @@ class TestResults:
 
     def get_test_result(self, testname):
         return self.test_results.get(testname, TEST_NA)
+
+    def json(self):
+        return json.dumps(self.test_results,
+                          indent=4, separators=(',', ': '))
 
 
 # class TestDependencies:
@@ -182,20 +194,36 @@ class BtsControlSsh:
             sftp.put('helper/'+f, self.tmpdir+'/'+f)
         sftp.close()
 
+    def _tee(self, stream, filename):
+        ''' Write lines from the stream to the file and return the lines '''
+        lines = stream.readlines()
+        f = file(filename, 'w')
+        f.writelines(lines)
+        f.close()
+        return lines
+
+
+    def get_uname(self):
+        ''' Get uname string '''
+        stdin, stdout, stderr = self.ssh.exec_command('uname -a')
+        return stdout.readline().strip()
+
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
+        print "Enabling BTS loopback"
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-en-loopback.py')
-        print stdout.readlines()
+        print stderr.readlines() + stdout.readlines()
 
     def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
         ''' Set BTS TRX0 slotmask '''
+        print "Setting BTS slotmask"
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
             % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
-        print stdout.readlines()
+        print stderr.readlines() + stdout.readlines()
 
     def bts_set_maxdly(self, val):
         ''' Set BTS TRX0 max timing advance '''
@@ -203,7 +231,72 @@ class BtsControlSsh:
         stdin, stdout, stderr = self.ssh.exec_command(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
-        print stdout.readlines()
+        print stderr.readlines() + stdout.readlines()
+
+    def start_runit_service(self, service):
+        ''' Start a runit controlled service '''
+        print("Starting '%s' service." % service)
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'sudo sv start %s' % service)
+        # TODO: Check result
+        print stderr.readlines() + stdout.readlines()
+
+    def stop_runit_service(self, service):
+        ''' Stop a runit controlled service '''
+        print("Stopping '%s' service." % service)
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'sudo sv stop %s' % service)
+        # TODO: Check result
+        print stderr.readlines() + stdout.readlines()
+
+    def get_umtrx_eeprom_val(self, name):
+        ''' Read UmTRX serial from EEPROM.
+            All UHD apps should be stopped at the time of reading. '''
+        stdin, stdout, stderr = self.ssh.exec_command(
+            '/usr/local/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
+        eeprom_val = re.compile(r'    EEPROM \["'+name+r'"\] is "(.*)"')
+        for s in stdout.readlines():
+            match = eeprom_val.match(s)
+            if match is not None:
+                return match.group(1)
+
+    def umtrx_autocalibrate(self, preset, filename_stdout, filename_stderr):
+        ''' Run UmTRX autocalibration for the selected band.
+            preset - One or more of the following space seprated values:
+                     GSM850, EGSM900 (same as GSM900),
+                     GSM1800 (same as DCS1800), GSM1900 (same as PCS1900)
+            All UHD apps should be stopped at the time of executing. '''
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'sudo umtrx_auto_calibration %s' % preset)
+        # TODO: Check result
+        lines = self._tee(stdout, filename_stdout)
+        self._tee(stderr, filename_stderr)
+        line_re = re.compile(r'Calibration type .* side . from .* to .*: ([A-Z]+)')
+        for l in lines:
+            match = line_re.match(l)
+            if match is not None:
+                if match.group(1) != 'SUCCESS':
+                    return False
+        return True
+
+###############################
+#   non-CMD57 based tests
+###############################
+
+
+@test_checker_decorator("bts_uname")
+def bts_read_uname(bts):
+    return bts.get_uname()
+
+
+@test_checker_decorator("umtrx_serial")
+def bts_read_umtrx_serial(bts):
+    return bts.get_umtrx_eeprom_val("serial")
+
+
+@test_checker_decorator("umtrx_autocalibrate")
+def bts_umtrx_autocalibrate(bts, preset, filename_stdout, filename_stderr):
+    return bts.umtrx_autocalibrate(preset, filename_stdout, filename_stderr)
 
 ###############################
 #   CMD57 control functions
@@ -223,6 +316,10 @@ def cmd57_configure(cmd, arfcn):
                       expected_power=37, tch_tx_power=-60,
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
+
+###############################
+#   CMD57 based tests
+###############################
 
 
 @test_checker_decorator("tester_name")
@@ -289,16 +386,31 @@ def measure_ber(dev):
 ###############################
 
 
-def run_tests():
-    print("Starting tests.")
+def run_bts_tests():
+    print("Starting BTS tests.")
+
+    # Stop osmo-trx to unlock UmTRX
+    bts.stop_runit_service("osmo-trx")
+
+    # Collect information about the BTS
+    bts_read_uname(bts)
+    bts_read_umtrx_serial(bts)
+
+    # Autocalibrate UmTRX
+    bts_umtrx_autocalibrate(bts, "GSM900", "calibration.log", "calibration.err.log")
+
+    # Start osmo-trx again
+    bts.start_runit_service("osmo-trx")
+
+
+def run_cmd57_tests():
+    print("Starting CMD57 tests.")
 
     # Collect useful information about the CMD57
     test_tester_id(cmd)
     test_tester_options(cmd)
 
     # TODO: Check GPS LEDs, 1pps, NMEA
-
-    # TODO: Calibrate Tx DC offset
 
     # TODO: Calibrate frequency
     #calibrate_freq_error(cmd)
@@ -363,6 +475,10 @@ args = parse_args()
 tr = TestResults(TEST_CHECKS)
 #test_deps = TestDependencies()
 
+#
+#   BTS tests
+#
+
 # Establish ssh connection with the BTS under test
 print("Establishing connection with the BTS.")
 bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
@@ -370,14 +486,24 @@ bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
 # by a few symbols
 bts.bts_set_maxdly(10)
 
+run_bts_tests()
+
+#
+#   CMD57 tests
+#
+
 # Establish connection with CMD57 and configure it
 print("Establishing connection with the CMD57.")
 cmd = cmd57_init(args.cmd57_port)
 cmd.switch_to_man_bidl()
 cmd57_configure(cmd, args.arfcn)
 
+run_cmd57_tests()
+
 #
-#   Test execution
+#   Dump report to a JSON file
 #
 
-run_tests()
+f = file("bts-test.log.json", 'w')
+f.write(tr.json())
+f.close()
