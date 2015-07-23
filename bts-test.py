@@ -416,6 +416,9 @@ def run_cmd57_tests():
     test_tester_id(cmd)
     test_tester_options(cmd)
 
+    # Make sure we start in idle mode
+    cmd.switch_to_idle()
+
     # TODO: Check GPS LEDs, 1pps, NMEA
 
     # TODO: Calibrate frequency
