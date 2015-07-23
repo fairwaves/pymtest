@@ -6,6 +6,7 @@ import argparse
 import traceback
 import re
 import json
+import os, sys, select  # for stdin flush
 
 
 #######################
@@ -121,8 +122,14 @@ class TestResults:
         self.test_results = {}
         self.checks = checks
 
+    def set_test_block(self, block):
+        self.block = block
+
+    def _get_block_subtree(self):
+        return self.test_results.setdefault(self.block, {})
+
     def set_test_result(self, testname, result, value=None):
-        self.test_results[testname] = (result, value)
+        self._get_block_subtree()[testname] = (result, value)
         print "%40s:  %7s" % (TEST_NAMES.get(testname, testname),
                               TEST_RESULT_NAMES[result]),
         if value is not None:
@@ -136,7 +143,7 @@ class TestResults:
         return res
 
     def get_test_result(self, testname):
-        return self.test_results.get(testname, TEST_NA)
+        return self._get_block_subtree().get(testname, TEST_NA)
 
     def json(self):
         return json.dumps(self.test_results,
@@ -469,6 +476,24 @@ def parse_args():
 
 
 ##################
+#   UI functions
+##################
+
+
+def ui_ask(text):
+    # Note: this flush code works under *nix OS only
+    while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
+        os.read(sys.stdin.fileno(), 4096)
+
+    print
+    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    val = raw_input(text+" ")
+    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    print
+    return val
+
+
+##################
 #   Main
 ##################
 
@@ -494,6 +519,7 @@ bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
 # by a few symbols
 bts.bts_set_maxdly(10)
 
+tr.set_test_block("system")
 run_bts_tests()
 
 #
@@ -506,7 +532,15 @@ cmd = cmd57_init(args.cmd57_port)
 cmd.switch_to_man_bidl()
 cmd57_configure(cmd, args.arfcn)
 
-run_cmd57_tests()
+resp = ui_ask("Connect CMD57 to the TRX1.")
+if resp != 's':
+    tr.set_test_block("TRX1")
+    run_cmd57_tests()
+
+resp = ui_ask("Connect CMD57 to the TRX2.")
+if resp != 's':
+    tr.set_test_block("TRX2")
+    run_cmd57_tests()
 
 #
 #   Dump report to a JSON file
