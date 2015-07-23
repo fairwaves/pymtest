@@ -77,6 +77,38 @@ TEST_NAMES = {
     "phase_err_array": "Phase error array (deg)",
     "phase_err_pk": "Phase error peak (deg)",
     "phase_err_avg": "Phase error avg (deg)",
+    "spectrum_modulation_offsets": "Modulation spectrum measurement offsets (kHz)",
+    "spectrum_modulation_tolerance_abs": "Modulation spectrum absolute tolerance mask (dBm)",
+    "spectrum_modulation_tolerance_rel": "Modulation spectrum relative tolerance mask (dBc)",
+    "spectrum_modulation": "Modulation spectrum measured (dBc)",
+    "spectrum_modulation_match": "Modulation spectrum match",
+    "spectrum_switching_offsets": "Switching spectrum measurement offsets (kHz)",
+    "spectrum_switching_tolerance_abs": "Switching spectrum absolute tolerance mask (dBm)",
+    "spectrum_switching_tolerance_rel": "Switching spectrum relative tolerance mask (dBc)",
+    "spectrum_switching": "Switching spectrum measured (dBc)",
+    "spectrum_switching_match": "Switching spectrum match",
+    "ber_used_ts_power": "Used TS power (dBm)",
+    "ber_unused_ts_power": "Unused TS power (dBm)",
+    "ber_frames_num": "Frames to send",
+    "ber_max_test_time": "Test time",
+    "ber_abort_condition": "Abort condition",
+    "ber_holdoff_time": "Hold-off time",
+    "ber_limit_class_1b": "Class Ib bit errors tolerance (%)",
+    "ber_max_class_1b_samples": "Class Ib bit errors max number",
+    "ber_limit_class_2": "Class II bit errors tolerance (%)",
+    "ber_max_class_2_samples": "Class II bit errors max number",
+    "ber_limit_erased_frames": "Erased frames tolerance (%)",
+    "ber_max_erased_frames_samples": "Erased frames max number",
+    "ber_test_result": "BER test result",
+    "ber_class_1b_events": "Class Ib bit error events",
+    "ber_class_1b_ber": "Class Ib bit error rate (%)",
+    "ber_class_1b_rber": "Class Ib bit residual error rate (%)",
+    "ber_class_2_events": "Class II bit error events",
+    "ber_class_2_ber": "Class II bit error rate (%)",
+    "ber_class_2_rber": "Class II bit residual error rate (%)",
+    "ber_erased_events": "Erased frame events",
+    "ber_erased_fer": "Erased frame rate (%)",
+    "ber_crc_errors": "CRC errors",
     "enable_tch_loopback": "Enabling BTS loopback mode"
 }
 
@@ -120,12 +152,34 @@ TEST_CHECKS = {
     "spectrum_modulation_tolerance_abs": test_ignore_checker(),
     "spectrum_modulation_tolerance_rel": test_ignore_checker(),
     "spectrum_modulation": test_ignore_checker(),
-    "spectrum_modulation_match": test_val_checker('MATC'),
+    "spectrum_modulation_match": test_val_checker("MATC"),
     "spectrum_switching_offsets": test_ignore_checker(),
     "spectrum_switching_tolerance_abs": test_ignore_checker(),
     "spectrum_switching_tolerance_rel": test_ignore_checker(),
     "spectrum_switching": test_ignore_checker(),
     "spectrum_switching_match": test_ignore_checker(),
+    "ber_used_ts_power": test_ignore_checker(),
+    "ber_unused_ts_power": test_ignore_checker(),
+    "ber_frames_num": test_ignore_checker(),
+    "ber_max_test_time": test_ignore_checker(),
+    "ber_abort_condition": test_ignore_checker(),
+    "ber_holdoff_time": test_ignore_checker(),
+    "ber_limit_class_1b": test_ignore_checker(),
+    "ber_max_class_1b_samples": test_ignore_checker(),
+    "ber_limit_class_2": test_ignore_checker(),
+    "ber_max_class_2_samples": test_ignore_checker(),
+    "ber_limit_erased_frames": test_ignore_checker(),
+    "ber_max_erased_frames_samples": test_ignore_checker(),
+    "ber_test_result": test_val_checker("PASS"),
+    "ber_class_1b_events": test_ignore_checker(),
+    "ber_class_1b_ber": test_ignore_checker(),
+    "ber_class_1b_rber": test_ignore_checker(),
+    "ber_class_2_events": test_ignore_checker(),
+    "ber_class_2_ber": test_ignore_checker(),
+    "ber_class_2_rber": test_ignore_checker(),
+    "ber_erased_events": test_ignore_checker(),
+    "ber_erased_fer": test_ignore_checker(),
+    "ber_crc_errors": test_ignore_checker(),
     "enable_tch_loopback": test_ignore_checker()
 }
 
@@ -374,6 +428,10 @@ def test_bcch_presence(cmd):
     cmd.switch_to_man_bbch()
     return cmd.ask_dev_state() == "BBCH"
 
+#
+# Burst power, phase and frequency tests
+#
+
 
 @test_checker_decorator("burst_power_avg")
 def test_burst_power_avg(cmd):
@@ -403,6 +461,10 @@ def test_phase_err_pk(cmd):
 @test_checker_decorator("phase_err_avg")
 def test_phase_err_avg(cmd):
     return cmd.fetch_phase_err_rms()
+
+#
+# Spectrum tests
+#
 
 
 @test_checker_decorator("spectrum_modulation_offsets")
@@ -454,17 +516,133 @@ def test_spectrum_switching(cmd):
 def test_spectrum_switching_match(cmd):
     return cmd.ask_spectrum_switching_match()
 
+#
+# BER test settings
+#
+
+
+@test_checker_decorator("ber_used_ts_power")
+def test_ber_used_ts_power(cmd):
+    return cmd.ask_ber_used_ts_power()
+
+
+@test_checker_decorator("ber_unused_ts_power")
+def test_ber_unused_ts_power(cmd):
+    return cmd.ask_ber_unused_ts_power()
+
+
+@test_checker_decorator("ber_frames_num")
+def test_ber_frames_num(cmd):
+    return cmd.ask_ber_frames_num()
+
+
+@test_checker_decorator("ber_max_test_time")
+def test_ber_max_test_time(cmd):
+    return cmd.ask_ber_max_test_time()
+
+
+@test_checker_decorator("ber_abort_condition")
+def test_ber_abort_condition(cmd):
+    return cmd.ask_ber_abort_cond()
+
+
+@test_checker_decorator("ber_holdoff_time")
+def test_ber_holdoff_time(cmd):
+    return cmd.ask_ber_holdoff_time()
+
+
+@test_checker_decorator("ber_limit_class_1b")
+def test_ber_limit_class_1b(cmd):
+    return cmd.ask_ber_limit_class_1b()
+
+
+@test_checker_decorator("ber_max_class_1b_samples")
+def test_ber_max_class_1b_samples(cmd):
+    return cmd.ask_ber_max_class_1b_samples()
+
+
+@test_checker_decorator("ber_limit_class_2")
+def test_ber_limit_class_2(cmd):
+    return cmd.ask_ber_limit_class_2()
+
+
+@test_checker_decorator("ber_max_class_2_samples")
+def test_ber_max_class_2_samples(cmd):
+    return cmd.ask_ber_max_class_2_samples()
+
+
+@test_checker_decorator("ber_limit_erased_frames")
+def test_ber_limit_erased_frames(cmd):
+    return cmd.ask_ber_limit_erased_frames()
+
+
+@test_checker_decorator("ber_max_erased_frames_samples")
+def test_ber_max_erased_frames_samples(cmd):
+    return cmd.ask_ber_max_erased_frames_samples()
+
+#
+# BER test results
+#
+
+
+@test_checker_decorator("ber_test_result")
+def test_ber_test_result(cmd):
+    return cmd.read_ber_test_result()
+
+
+@test_checker_decorator("ber_class_1b_events")
+def test_ber_class_1b_events(cmd):
+    return cmd.fetch_ber_class_1b_events()
+
+
+@test_checker_decorator("ber_class_1b_ber")
+def test_ber_class_1b_ber(cmd):
+    return cmd.fetch_ber_class_1b_ber()
+
+
+@test_checker_decorator("ber_class_1b_rber")
+def test_ber_class_1b_rber(cmd):
+    return cmd.fetch_ber_class_1b_rber()
+
+
+@test_checker_decorator("ber_class_2_events")
+def test_ber_class_2_events(cmd):
+    return cmd.fetch_ber_class_2_events()
+
+
+@test_checker_decorator("ber_class_2_ber")
+def test_ber_class_2_ber(cmd):
+    return cmd.fetch_ber_class_2_ber()
+
+
+@test_checker_decorator("ber_class_2_rber")
+def test_ber_class_2_rber(cmd):
+    return cmd.fetch_ber_class_2_rber()
+
+
+@test_checker_decorator("ber_erased_events")
+def test_ber_erased_events(cmd):
+    return cmd.fetch_ber_erased_events()
+
+
+@test_checker_decorator("ber_erased_fer")
+def test_ber_erased_fer(cmd):
+    return cmd.fetch_ber_erased_fer()
+
+
+@test_checker_decorator("ber_crc_errors")
+def test_ber_crc_errors(cmd):
+    return cmd.fetch_ber_crc_errors()
+
+#
+# Helpers
+#
+
 
 @test_checker_decorator("enable_tch_loopback")
 def test_enable_tch_loopback(cmd, bts):
     cmd.switch_to_man_btch()
     bts.bts_en_loopback()
-
-
-def measure_ber(dev):
-    ''' BER measurements '''
-    dev.print_ber_test_settings()
-    dev.print_ber_test_result(True)
 
 
 ###############################
@@ -489,12 +667,16 @@ def run_bts_tests():
     bts.start_runit_service("osmo-trx")
 
 
-def run_cmd57_tests():
-    print("Starting CMD57 tests.")
+def run_cmd57_info():
+    print("Collect CMD57 information.")
 
     # Collect useful information about the CMD57
     test_tester_id(cmd)
     test_tester_options(cmd)
+
+
+def run_tx_tests():
+    print("Starting Tx tests.")
 
     # Make sure we start in idle mode
     cmd.switch_to_idle()
@@ -538,8 +720,39 @@ def run_cmd57_tests():
     test_spectrum_switching(cmd)
     test_spectrum_switching_match(cmd)
 
-    # BER measurements
-    measure_ber(cmd)
+
+def run_ber_tests():
+    print("Starting BER tests.")
+
+    # BER test settings
+    test_ber_used_ts_power(cmd)
+    test_ber_unused_ts_power(cmd)
+    test_ber_frames_num(cmd)
+    test_ber_max_test_time(cmd)
+    test_ber_abort_condition(cmd)
+    test_ber_holdoff_time(cmd)
+    test_ber_limit_class_1b(cmd)
+    test_ber_max_class_1b_samples(cmd)
+    test_ber_limit_class_2(cmd)
+    test_ber_max_class_2_samples(cmd)
+    test_ber_limit_erased_frames(cmd)
+    test_ber_max_erased_frames_samples(cmd)
+
+    # BER test result
+    test_ber_test_result(cmd)
+    test_ber_class_1b_events(cmd)
+    test_ber_class_1b_ber(cmd)
+    test_ber_class_1b_rber(cmd)
+    test_ber_class_2_events(cmd)
+    test_ber_class_2_ber(cmd)
+    test_ber_class_2_rber(cmd)
+    test_ber_erased_events(cmd)
+    test_ber_erased_fer(cmd)
+    test_ber_crc_errors(cmd)
+
+    # Nice printout, just for the screen
+    cmd.print_ber_test_settings()
+    cmd.print_ber_test_result(False)
 
 
 ###############################
@@ -620,12 +833,18 @@ cmd57_configure(cmd, args.arfcn)
 resp = ui_ask("Connect CMD57 to the TRX1.")
 if resp != 's':
     tr.set_test_block("TRX1")
-    run_cmd57_tests()
+    run_cmd57_info()
+    run_tx_tests()
+    tr.set_test_block("TRX1/BER1")
+    run_ber_tests()
 
 resp = ui_ask("Connect CMD57 to the TRX2.")
 if resp != 's':
     tr.set_test_block("TRX2")
-    run_cmd57_tests()
+    run_cmd57_info()
+    run_tx_tests()
+    tr.set_test_block("TRX2/BER1")
+    run_ber_tests()
 
 #
 #   Dump report to a JSON file
