@@ -14,6 +14,11 @@ import json
 from functools import wraps
 
 
+def test_none_checker():
+    return lambda val: TEST_OK if val is not None \
+                               else TEST_FAIL
+
+
 def test_bool_checker():
     return lambda val: TEST_OK if val is not None and val \
                                else TEST_FAIL
@@ -36,7 +41,7 @@ def test_minmax_checker(min, max):
                                else TEST_FAIL
 
 
-def test_none_checker():
+def test_ignore_checker():
     return lambda val: TEST_OK
 
 # Enable/disable debug mode
@@ -83,13 +88,13 @@ UMSITE_TM3_PARAMS = {
 }
 
 TEST_CHECKS = {
-    "bts_uname": test_none_checker(),
+    "bts_uname": test_ignore_checker(),
     "umtrx_serial": test_none_checker(),
-    "umtrx_autocalibrate": test_none_checker(),
-    "tester_name": test_none_checker(),
-    "tester_serial": test_none_checker(),
-    "tester_version": test_none_checker(),
-    "tester_options": test_none_checker(),
+    "umtrx_autocalibrate": test_bool_checker(),
+    "tester_name": test_ignore_checker(),
+    "tester_serial": test_ignore_checker(),
+    "tester_version": test_ignore_checker(),
+    "tester_options": test_ignore_checker(),
     "output_power": test_minmax_checker(
         UMSITE_TM3_PARAMS["output_power_min"],
         UMSITE_TM3_PARAMS["output_power_max"]),
@@ -106,7 +111,7 @@ TEST_CHECKS = {
     "phase_err_avg": test_minmax_checker(
         UMSITE_TM3_PARAMS["phase_err_avg_min"],
         UMSITE_TM3_PARAMS["phase_err_avg_max"]),
-    "enable_tch_loopback": test_none_checker()
+    "enable_tch_loopback": test_ignore_checker()
 }
 
 
@@ -259,6 +264,7 @@ class BtsControlSsh:
             match = eeprom_val.match(s)
             if match is not None:
                 return match.group(1)
+        return None
 
     def umtrx_autocalibrate(self, preset, filename_stdout, filename_stderr):
         ''' Run UmTRX autocalibration for the selected band.
