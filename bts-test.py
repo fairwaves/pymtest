@@ -71,8 +71,10 @@ TEST_NAMES = {
     "tester_options": "Tester installed options",
     "output_power": "TRX output power (dBm)",
     "bcch_presence": "BCCH detected",
-    "burst_avg_power": "Burst avg powr (dBm)",
+    "burst_power_avg": "Burst avg power (dBm)",
+    "burst_power_array": "Burst power array (dBm)",
     "freq_error": "Frequency error (Hz)",
+    "phase_err_array": "Phase error array (deg)",
     "phase_err_pk": "Phase error peak (deg)",
     "phase_err_avg": "Phase error avg (deg)",
     "enable_tch_loopback": "Enabling BTS loopback mode"
@@ -100,18 +102,30 @@ TEST_CHECKS = {
         UMSITE_TM3_PARAMS["output_power_min"],
         UMSITE_TM3_PARAMS["output_power_max"]),
     "bcch_presence": test_bool_checker(),
-    "burst_avg_power": test_minmax_checker(
+    "burst_power_avg": test_minmax_checker(
         UMSITE_TM3_PARAMS["output_power_min"],
         UMSITE_TM3_PARAMS["output_power_max"]),
+    "burst_power_array": test_ignore_checker(),
     "freq_error": test_minmax_checker(
         -UMSITE_TM3_PARAMS["freq_error"],
         UMSITE_TM3_PARAMS["freq_error"]),
+    "phase_err_array": test_ignore_checker(),
     "phase_err_pk": test_minmax_checker(
         UMSITE_TM3_PARAMS["phase_err_pk_min"],
         UMSITE_TM3_PARAMS["phase_err_pk_max"]),
     "phase_err_avg": test_minmax_checker(
         UMSITE_TM3_PARAMS["phase_err_avg_min"],
         UMSITE_TM3_PARAMS["phase_err_avg_max"]),
+    "spectrum_modulation_offsets": test_ignore_checker(),
+    "spectrum_modulation_tolerance_abs": test_ignore_checker(),
+    "spectrum_modulation_tolerance_rel": test_ignore_checker(),
+    "spectrum_modulation": test_ignore_checker(),
+    "spectrum_modulation_match": test_val_checker('MATC'),
+    "spectrum_switching_offsets": test_ignore_checker(),
+    "spectrum_switching_tolerance_abs": test_ignore_checker(),
+    "spectrum_switching_tolerance_rel": test_ignore_checker(),
+    "spectrum_switching": test_ignore_checker(),
+    "spectrum_switching_match": test_ignore_checker(),
     "enable_tch_loopback": test_ignore_checker()
 }
 
@@ -361,14 +375,24 @@ def test_bcch_presence(cmd):
     return cmd.ask_dev_state() == "BBCH"
 
 
-@test_checker_decorator("burst_avg_power")
-def test_burst_avg_power(cmd):
+@test_checker_decorator("burst_power_avg")
+def test_burst_power_avg(cmd):
     return cmd.ask_burst_power_avg()
+
+
+@test_checker_decorator("burst_power_array")
+def test_burst_power_array(cmd):
+    return cmd.ask_burst_power_arr()
 
 
 @test_checker_decorator("freq_error")
 def test_freq_error(cmd):
     return cmd.ask_freq_err()
+
+
+@test_checker_decorator("phase_err_array")
+def test_phase_err_array(cmd):
+    return cmd.ask_phase_err_arr()
 
 
 @test_checker_decorator("phase_err_pk")
@@ -379,6 +403,56 @@ def test_phase_err_pk(cmd):
 @test_checker_decorator("phase_err_avg")
 def test_phase_err_avg(cmd):
     return cmd.fetch_phase_err_rms()
+
+
+@test_checker_decorator("spectrum_modulation_offsets")
+def test_spectrum_modulation_offsets(cmd):
+    return cmd.fetch_spectrum_modulation_offsets()
+
+
+@test_checker_decorator("spectrum_modulation_tolerance_abs")
+def test_spectrum_modulation_tolerance_abs(cmd):
+    return cmd.ask_spectrum_modulation_tolerance_abs()
+
+
+@test_checker_decorator("spectrum_modulation_tolerance_rel")
+def test_spectrum_modulation_tolerance_rel(cmd):
+    return cmd.ask_spectrum_modulation_tolerance_rel()
+
+
+@test_checker_decorator("spectrum_modulation")
+def test_spectrum_modulation(cmd):
+    return cmd.ask_spectrum_modulation()
+
+
+@test_checker_decorator("spectrum_modulation_match")
+def test_spectrum_modulation_match(cmd):
+    return cmd.ask_spectrum_modulation_match()
+
+
+@test_checker_decorator("spectrum_switching_offsets")
+def test_spectrum_switching_offsets(cmd):
+    return cmd.fetch_spectrum_switching_offsets()
+
+
+@test_checker_decorator("spectrum_switching_tolerance_abs")
+def test_spectrum_switching_tolerance_abs(cmd):
+    return cmd.ask_spectrum_switching_tolerance_abs()
+
+
+@test_checker_decorator("spectrum_switching_tolerance_rel")
+def test_spectrum_switching_tolerance_rel(cmd):
+    return cmd.ask_spectrum_switching_tolerance_rel()
+
+
+@test_checker_decorator("spectrum_switching")
+def test_spectrum_switching(cmd):
+    return cmd.ask_spectrum_switching()
+
+
+@test_checker_decorator("spectrum_switching_match")
+def test_spectrum_switching_match(cmd):
+    return cmd.ask_spectrum_switching_match()
 
 
 @test_checker_decorator("enable_tch_loopback")
@@ -431,27 +505,38 @@ def run_cmd57_tests():
     #calibrate_freq_error(cmd)
 
     # Prepare for BCCH measurements
-    res = test_bcch_presence(cmd)
-    if res != TEST_OK:
-        return res
-
-    # BCCH measurements
-    print "Manual test - Control Channel"
-    test_burst_avg_power(cmd)
-    test_freq_error(cmd)
-    test_phase_err_pk(cmd)
-    test_phase_err_avg(cmd)
+    # res = test_bcch_presence(cmd)
+    # if res != TEST_OK:
+    #     return res
 
     # Prepare for TCH tests
     res = test_enable_tch_loopback(cmd, bts)
     if res != TEST_OK:
         return res
 
-    # Phase, power profile and spectrum measurements.
-    cmd.print_man_phase_freq_info(True)
-    cmd.print_man_power(True)
-    cmd.print_man_spectrum_modulation(True)
-    cmd.print_man_spectrum_switching(True)
+    # Burst power measurements
+    test_burst_power_avg(cmd)
+    test_burst_power_array(cmd)
+
+    # Phase and frequency measurements
+    test_freq_error(cmd)
+    test_phase_err_array(cmd)
+    test_phase_err_pk(cmd)  # fetches calculated value only
+    test_phase_err_avg(cmd)  # fetches calculated value only
+
+    # Modulation spectrum measurements
+    test_spectrum_modulation_offsets(cmd)
+    test_spectrum_modulation_tolerance_abs(cmd)
+    test_spectrum_modulation_tolerance_rel(cmd)
+    test_spectrum_modulation(cmd)
+    test_spectrum_modulation_match(cmd)
+
+    # Switching spectrum measurements
+    test_spectrum_switching_offsets(cmd)
+    test_spectrum_switching_tolerance_abs(cmd)
+    test_spectrum_switching_tolerance_rel(cmd)
+    test_spectrum_switching(cmd)
+    test_spectrum_switching_match(cmd)
 
     # BER measurements
     measure_ber(cmd)
