@@ -257,7 +257,7 @@ class BtsControlSsh:
         ''' Read UmTRX serial from EEPROM.
             All UHD apps should be stopped at the time of reading. '''
         stdin, stdout, stderr = self.ssh.exec_command(
-            '/usr/local/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
+            '/usr/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
         eeprom_val = re.compile(r'    EEPROM \["'+name+r'"\] is "(.*)"')
         for s in stdout.readlines():
             match = eeprom_val.match(s)
