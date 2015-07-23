@@ -207,7 +207,6 @@ class BtsControlSsh:
         f.close()
         return lines
 
-
     def get_uname(self):
         ''' Get uname string '''
         stdin, stdout, stderr = self.ssh.exec_command('uname -a')
