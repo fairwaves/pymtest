@@ -198,7 +198,7 @@ class TestResults:
 
     def set_test_result(self, testname, result, value=None):
         self._get_block_subtree()[testname] = (result, value)
-        print "%40s:  %7s" % (TEST_NAMES.get(testname, testname),
+        print "%50s:  %7s" % (TEST_NAMES.get(testname, testname),
                               TEST_RESULT_NAMES[result]),
         if value is not None:
             print " (%s)" % str(value)
@@ -668,7 +668,7 @@ def run_bts_tests():
 
 
 def run_cmd57_info():
-    print("Collect CMD57 information.")
+    print("Collecting CMD57 information.")
 
     # Collect useful information about the CMD57
     test_tester_id(cmd)
