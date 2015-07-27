@@ -215,7 +215,7 @@ class TestResults:
         return res
 
     def get_test_result(self, testname):
-        return self._get_block_subtree().get(testname, TEST_NA)
+        return self._get_block_subtree().get(testname, (0, TEST_NA, None))
 
     def json(self):
         return json.dumps(self.test_results,
