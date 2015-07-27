@@ -13,6 +13,7 @@ import os, sys, select  # for stdin flush
 #   Tests definition
 #######################
 from functools import wraps
+import time
 
 
 def test_none_checker():
@@ -197,9 +198,12 @@ class TestResults:
         return self.test_results.setdefault(self.block, {})
 
     def set_test_result(self, testname, result, value=None):
-        self._get_block_subtree()[testname] = (result, value)
-        print "%50s:  %7s" % (TEST_NAMES.get(testname, testname),
-                              TEST_RESULT_NAMES[result]),
+        t = time.time()
+        self._get_block_subtree()[testname] = (t, result, value)
+        print "[%s] %50s:  %7s" % (
+            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t))
+            TEST_NAMES.get(testname, testname),
+            TEST_RESULT_NAMES[result]),
         if value is not None:
             print " (%s)" % str(value)
         else:
