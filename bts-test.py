@@ -201,7 +201,7 @@ class TestResults:
         t = time.time()
         self._get_block_subtree()[testname] = (t, result, value)
         print "[%s] %50s:  %7s" % (
-            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t))
+            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
             TEST_NAMES.get(testname, testname),
             TEST_RESULT_NAMES[result]),
         if value is not None:
