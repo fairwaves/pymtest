@@ -190,6 +190,7 @@ class TestResults:
     def __init__(self, checks):
         self.test_results = {}
         self.checks = checks
+        self.block = 'global'
 
     def set_test_block(self, block):
         self.block = block
