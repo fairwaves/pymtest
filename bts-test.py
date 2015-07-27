@@ -445,11 +445,11 @@ def test_burst_power_peak(cmd):
 
 def test_burst_power_peak_wait(cmd, timeout):
     ''' Wait for output power level '''
-    ret = TEST_NA
+    res = TEST_NA
     t = time.time()
-    while ret != TEST_OK or time.time()-t < timeout:
-        ret = cmd.ask_peak_power()
-    return ret
+    while res != TEST_OK and time.time()-t < timeout:
+        res = test_burst_power_peak(cmd)
+    return res
 
 
 @test_checker_decorator("bcch_presence")
