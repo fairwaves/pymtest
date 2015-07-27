@@ -712,13 +712,15 @@ def run_tx_tests():
     # if res != TEST_OK:
     #     return res
 
+    # Measure peak power before everything else
+    test_burst_power_peak(cmd)
+
     # Prepare for TCH tests
     res = test_enable_tch_loopback(cmd, bts)
     if res != TEST_OK:
         return res
 
     # Burst power measurements
-    test_burst_power_peak(cmd)
     test_burst_power_avg(cmd)
     test_burst_power_array(cmd)
 
