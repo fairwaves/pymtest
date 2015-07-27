@@ -443,6 +443,15 @@ def test_burst_power_peak(cmd):
     return cmd.ask_peak_power()
 
 
+def test_burst_power_peak_wait(cmd, timeout):
+    ''' Wait for output power level '''
+    ret = TEST_NA
+    t = time.time()
+    while ret != TEST_OK or time.time()-t < timeout:
+        ret = cmd.ask_peak_power()
+    return ret
+
+
 @test_checker_decorator("bcch_presence")
 def test_bcch_presence(cmd):
     ''' Check BCCH presence '''
@@ -713,7 +722,7 @@ def run_tx_tests():
     #     return res
 
     # Measure peak power before everything else
-    test_burst_power_peak(cmd)
+    test_burst_power_peak_wait(cmd, 20)
 
     # Prepare for TCH tests
     res = test_enable_tch_loopback(cmd, bts)
