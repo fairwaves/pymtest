@@ -31,24 +31,24 @@ trx_re = re.compile(r'^[^#].* osmo-trx ')
 for i in range(len(lines)):
     if trx_re.match(lines[i]) is not None:
         s = lines[i].split()
-        if action == 'TRX1':
+        if action == '1':
             # Remove '-S'
             if OPTION in s:
                 s.remove(OPTION)
                 lines[i] = ' '.join(s) + '\n'
-            print "TRX1"
-        elif action == 'TRX2':
+            print "1"
+        elif action == '2':
             # Add '-S'
             if OPTION not in s:
                 s.append(OPTION)
                 lines[i] = ' '.join(s) + '\n'
-            print "TRX2"
-        elif action == '':
+            print "2"
+        elif action == '?':
             # Check '-S'
             if OPTION in s:
-                print "TRX2"
+                print "2"
             else:
-                print "TRX1"
+                print "1"
             sys.exit()
         else:
             raise RuntimeError('Unkown action selected')
