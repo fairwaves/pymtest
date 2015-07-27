@@ -341,6 +341,14 @@ class BtsControlSsh:
         # TODO: Check result
         print stderr.readlines() + stdout.readlines()
 
+    def restart_runit_service(self, service):
+        ''' Restart a runit controlled service '''
+        print("Restarting '%s' service." % service)
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'sudo sv restart %s' % service)
+        # TODO: Check result
+        print stderr.readlines() + stdout.readlines()
+
     def get_umtrx_eeprom_val(self, name):
         ''' Read UmTRX serial from EEPROM.
             All UHD apps should be stopped at the time of reading. '''
@@ -847,6 +855,7 @@ resp = ui_ask("Connect CMD57 to the TRX1.")
 if resp != 's':
     tr.set_test_block("TRX1")
     bts.trx_set_primary(1)
+    bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
     run_tx_tests()
     tr.set_test_block("TRX1/BER1")
@@ -856,6 +865,7 @@ resp = ui_ask("Connect CMD57 to the TRX2.")
 if resp != 's':
     tr.set_test_block("TRX2")
     bts.trx_set_primary(2)
+    bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
     run_tx_tests()
     tr.set_test_block("TRX2/BER1")
@@ -863,6 +873,7 @@ if resp != 's':
 
 # switch back to TRX1
 bts.trx_set_primary(1)
+bts.restart_runit_service("osmo-trx")
 
 
 #
