@@ -291,6 +291,14 @@ class BtsControlSsh:
         stdin, stdout, stderr = self.ssh.exec_command('uname -a')
         return stdout.readline().strip()
 
+    def trx_set_primary(self, num):
+        ''' Set primary TRX '''
+        print "Setting primary TRX to TRX%d" % num
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'cd ' + self.tmpdir + '; ' +
+            'sudo python osmo-trx-primary-trx.py %d' % num)
+        print stderr.readlines() + stdout.readlines()
+
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
         print "Enabling BTS loopback"
@@ -837,6 +845,7 @@ cmd57_configure(cmd, args.arfcn)
 resp = ui_ask("Connect CMD57 to the TRX1.")
 if resp != 's':
     tr.set_test_block("TRX1")
+    bts.trx_set_primary(1)
     run_cmd57_info()
     run_tx_tests()
     tr.set_test_block("TRX1/BER1")
@@ -845,10 +854,15 @@ if resp != 's':
 resp = ui_ask("Connect CMD57 to the TRX2.")
 if resp != 's':
     tr.set_test_block("TRX2")
+    bts.trx_set_primary(2)
     run_cmd57_info()
     run_tx_tests()
     tr.set_test_block("TRX2/BER1")
     run_ber_tests()
+
+# switch back to TRX1
+bts.trx_set_primary(1)
+
 
 #
 #   Dump report to a JSON file
