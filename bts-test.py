@@ -261,7 +261,8 @@ def test_checker_decorator(testname):
 class BtsControlSsh:
 
     helpers = ["obscvty.py", "osmobts-en-loopback.py",
-               "osmobts-set-maxdly.py", "osmobts-set-slotmask.py"]
+               "osmobts-set-maxdly.py", "osmobts-set-slotmask.py",
+               "osmo-trx-primary-trx.py"]
 
     def __init__(self, bts_ip, username='fairwaves', password='fairwaves',
                  tmpdir='/tmp/bts-test'):
