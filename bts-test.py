@@ -70,7 +70,7 @@ TEST_NAMES = {
     "tester_serial": "Tester system serial number",
     "tester_version": "Tester system version",
     "tester_options": "Tester installed options",
-    "output_power": "TRX output power (dBm)",
+    "burst_power_peak": "TRX output power (dBm)",
     "bcch_presence": "BCCH detected",
     "burst_power_avg": "Burst avg power (dBm)",
     "burst_power_array": "Burst power array (dBm)",
@@ -114,8 +114,8 @@ TEST_NAMES = {
 }
 
 UMSITE_TM3_PARAMS = {
-    "output_power_min": 34,  # dBm
-    "output_power_max": 36,  # dBm
+    "burst_power_peak_min": 34,  # dBm
+    "burst_power_peak_max": 36,  # dBm
     "freq_error": 50,  # Hz
     "phase_err_pk_min": -10.0,  # deg
     "phase_err_pk_max":  10.0,  # deg
@@ -131,13 +131,13 @@ TEST_CHECKS = {
     "tester_serial": test_ignore_checker(),
     "tester_version": test_ignore_checker(),
     "tester_options": test_ignore_checker(),
-    "output_power": test_minmax_checker(
-        UMSITE_TM3_PARAMS["output_power_min"],
-        UMSITE_TM3_PARAMS["output_power_max"]),
+    "burst_power_peak": test_minmax_checker(
+        UMSITE_TM3_PARAMS["burst_power_peak_min"],
+        UMSITE_TM3_PARAMS["burst_power_peak_max"]),
     "bcch_presence": test_bool_checker(),
     "burst_power_avg": test_minmax_checker(
-        UMSITE_TM3_PARAMS["output_power_min"],
-        UMSITE_TM3_PARAMS["output_power_max"]),
+        UMSITE_TM3_PARAMS["burst_power_peak_min"],
+        UMSITE_TM3_PARAMS["burst_power_peak_max"]),
     "burst_power_array": test_ignore_checker(),
     "freq_error": test_minmax_checker(
         -UMSITE_TM3_PARAMS["freq_error"],
@@ -225,7 +225,7 @@ class TestResults:
 # class TestDependencies:
 
 #     dep_table = {
-# #        "test_bcch_presence": ("output_power",),
+# #        "test_bcch_presence": ("burst_power_peak",),
 #         "measure_bcch": ("bcch_presence",),
 #         "measure_tch_basic": ("bcch_presence",)
 #     }
@@ -437,8 +437,8 @@ def test_tester_options(cmd):
     return " ".join(cmd.ask_installed_options())
 
 
-@test_checker_decorator("output_power")
-def test_output_power(cmd):
+@test_checker_decorator("burst_power_peak")
+def test_burst_power_peak(cmd):
     ''' Check output power level '''
     return cmd.ask_peak_power()
 
@@ -718,6 +718,7 @@ def run_tx_tests():
         return res
 
     # Burst power measurements
+    test_burst_power_peak(cmd)
     test_burst_power_avg(cmd)
     test_burst_power_array(cmd)
 
