@@ -209,6 +209,7 @@ class TestResults:
             print " (%s)" % str(value)
         else:
             print
+        return result
 
     def check_test_result(self, testname, value):
         res = self.checks[testname](value)
@@ -249,7 +250,8 @@ def test_checker_decorator(testname):
             except:
                 if _tests_debug:
                     traceback.print_exc()
-                res = tr.set_test_result(testname, TEST_ABORTED)
+                res = TEST_ABORTED
+                tr.set_test_result(testname, res)
             return res
         return wrapper
     return real_decorator
