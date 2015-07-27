@@ -190,17 +190,17 @@ class TestResults:
     def __init__(self, checks):
         self.test_results = {}
         self.checks = checks
-        self.block = 'global'
+        self.scope = 'global'
 
-    def set_test_block(self, block):
-        self.block = block
+    def set_test_scope(self, scope):
+        self.scope = scope
 
-    def _get_block_subtree(self):
-        return self.test_results.setdefault(self.block, {})
+    def _get_scope_subtree(self):
+        return self.test_results.setdefault(self.scope, {})
 
     def set_test_result(self, testname, result, value=None):
         t = time.time()
-        self._get_block_subtree()[testname] = (t, result, value)
+        self._get_scope_subtree()[testname] = (t, result, value)
         print "[%s] %50s:  %7s" % (
             time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
             TEST_NAMES.get(testname, testname),
@@ -217,7 +217,7 @@ class TestResults:
         return res
 
     def get_test_result(self, testname):
-        return self._get_block_subtree().get(testname, (0, TEST_NA, None))
+        return self._get_scope_subtree().get(testname, (0, TEST_NA, None))
 
     def json(self):
         return json.dumps(self.test_results,
@@ -853,7 +853,7 @@ bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
 # by a few symbols
 bts.bts_set_maxdly(10)
 
-tr.set_test_block("system")
+tr.set_test_scope("system")
 run_bts_tests()
 
 #
@@ -868,22 +868,22 @@ cmd57_configure(cmd, args.arfcn)
 
 resp = ui_ask("Connect CMD57 to the TRX1.")
 if resp != 's':
-    tr.set_test_block("TRX1")
+    tr.set_test_scope("TRX1")
     bts.trx_set_primary(1)
     bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
     run_tx_tests()
-    tr.set_test_block("TRX1/BER1")
+    tr.set_test_scope("TRX1/BER1")
     run_ber_tests()
 
 resp = ui_ask("Connect CMD57 to the TRX2.")
 if resp != 's':
-    tr.set_test_block("TRX2")
+    tr.set_test_scope("TRX2")
     bts.trx_set_primary(2)
     bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
     run_tx_tests()
-    tr.set_test_block("TRX2/BER1")
+    tr.set_test_scope("TRX2/BER1")
     run_ber_tests()
 
 # switch back to TRX1
