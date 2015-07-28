@@ -8,6 +8,12 @@ import re
 import json
 import os, sys, select  # for stdin flush
 
+UMSITE_TM3_VGA2_DEF = 22
+UMSITE_TM3_DCDC_DEF = 190
+
+UMTRX_VGA2_DEF = UMSITE_TM3_VGA2_DEF
+UMTRX_DCDC_DEF = UMSITE_TM3_DCDC_DEF
+UMTRX_DCDC_MAX = 255
 
 #######################
 #   Tests definition
@@ -110,7 +116,10 @@ TEST_NAMES = {
     "ber_erased_events": "Erased frame events",
     "ber_erased_fer": "Erased frame rate (%)",
     "ber_crc_errors": "CRC errors",
-    "enable_tch_loopback": "Enabling BTS loopback mode"
+    "enable_tch_loopback": "Enabling BTS loopback mode",
+    "power_vswr_vga2": "Power&VSWR vs VGA2",
+    "power_vswr_dcdc": "Power&VSWR vs DCDC control",
+    "vswr_vga2": "VSWR vs VGA2"
 }
 
 UMSITE_TM3_PARAMS = {
@@ -181,7 +190,10 @@ TEST_CHECKS = {
     "ber_erased_events": test_ignore_checker(),
     "ber_erased_fer": test_ignore_checker(),
     "ber_crc_errors": test_ignore_checker(),
-    "enable_tch_loopback": test_ignore_checker()
+    "enable_tch_loopback": test_ignore_checker(),
+    "power_vswr_vga2": test_none_checker(),
+    "power_vswr_dcdc": test_none_checker(),
+    "vswr_vga2": test_none_checker()
 }
 
 
@@ -265,7 +277,11 @@ class BtsControlSsh:
 
     helpers = ["obscvty.py", "osmobts-en-loopback.py",
                "osmobts-set-maxdly.py", "osmobts-set-slotmask.py",
-               "osmo-trx-primary-trx.py"]
+               "osmo-trx-primary-trx.py", "umtrx_set_dcdc_r.py",
+               "umtrx_get_vswr_sensors.py",
+               # TODO: Move this from helpers to packages
+               "umtrx_property_tree.py",
+               "umtrx_ctrl.py", "umtrx_lms.py"]
 
     def __init__(self, bts_ip, username='fairwaves', password='fairwaves',
                  tmpdir='/tmp/bts-test'):
@@ -327,6 +343,33 @@ class BtsControlSsh:
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
         print stderr.readlines() + stdout.readlines()
+
+    def umtrx_set_dcdc_r(self, val):
+        ''' Set UmTRX DCDC control register value '''
+#        print("UmTRX: setting DCDC control register to %d." % val)
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'cd ' + self.tmpdir + '; ' +
+            'python umtrx_set_dcdc_r.py %d' % val)
+        stdout.readlines()
+
+    def umtrx_set_tx_vga2(self, chan, val):
+        ''' Set UmTRX Tx VGA2 gain '''
+#        print("UmTRX: setting UmTRX Tx VGA2 gain for chan %d to %d."
+#              % (chan, val))
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'cd ' + self.tmpdir + '; ' +
+            'python umtrx_lms.py --lms %d --lms-set-tx-vga2-gain %d'
+            % (chan, val))
+        stdout.readlines()
+
+    def umtrx_get_vswr_sensors(self, chan):
+        ''' Read UmTRX VPR and VPF sensors '''
+        stdin, stdout, stderr = self.ssh.exec_command(
+            'cd ' + self.tmpdir + '; ' +
+            'python umtrx_get_vswr_sensors.py')
+        res = [float(x.strip()) for x in stdout.readlines()]
+        start = (chan-1)*2
+        return res[start:start+2]
 
     def start_runit_service(self, service):
         ''' Start a runit controlled service '''
@@ -666,6 +709,85 @@ def test_ber_erased_fer(cmd):
 @test_checker_decorator("ber_crc_errors")
 def test_ber_crc_errors(cmd):
     return cmd.fetch_ber_crc_errors()
+
+#
+# Power calibration
+#
+
+
+@test_checker_decorator("power_vswr_vga2")
+def test_power_vswr_vga2(cmd, bts, chan):
+    try:
+        print "Testing power&VSWR vs VGA2"
+        print "VGA2\tPk power\tAvg power\tVPF\tVPR"
+        res = []
+        for vga2 in range(26):
+            bts.umtrx_set_tx_vga2(chan, vga2)
+            power_pk = cmd.ask_peak_power()
+            power_avg = cmd.ask_burst_power_avg()
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((vga2, power_pk, power_avg, vpf, vpr))
+            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+        # Sweep from max to min to weed out temperature dependency
+        for vga2 in range(25, -1, -1):
+            bts.umtrx_set_tx_vga2(chan, vga2)
+            power_pk = cmd.ask_peak_power()
+            power_avg = cmd.ask_burst_power_avg()
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((vga2, power_pk, power_avg, vpf, vpr))
+            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+        return res
+    finally:
+        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
+
+
+@test_checker_decorator("vswr_vga2")
+def test_vswr_vga2(bts, chan):
+    try:
+        print "Testing VSWR vs VGA2"
+        print "VGA2\tVPF\tVPR"
+        res = []
+        for vga2 in range(26):
+            bts.umtrx_set_tx_vga2(chan, vga2)
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((vga2, vpf, vpr))
+            print("%d\t%.2f\t%.2f" % res[-1])
+        # Sweep from max to min to weed out temperature dependency
+        for vga2 in range(25, -1, -1):
+            bts.umtrx_set_tx_vga2(chan, vga2)
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((vga2, vpf, vpr))
+            print("%d\t%.2f\t%.2f" % res[-1])
+        return res
+    finally:
+        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
+
+
+@test_checker_decorator("power_vswr_dcdc")
+def test_power_vswr_dcdc(cmd, bts, chan):
+    try:
+        print "Testing power&VSWR vs DCDC control"
+        print "DCDC_R\tPk power\tAvg power\tVPF\tVPR"
+        res = []
+        for dcdc in range(UMTRX_DCDC_MAX+1):
+            bts.umtrx_set_dcdc_r(dcdc)
+            power_pk = cmd.ask_peak_power()
+            power_avg = cmd.ask_burst_power_avg()
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((dcdc, power_pk, power_avg, vpf, vpr))
+            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+        # Sweep from max to min to weed out temperature dependency
+        for dcdc in range(UMTRX_DCDC_MAX, -1, -1):
+            bts.umtrx_set_dcdc_r(dcdc)
+            power_pk = cmd.ask_peak_power()
+            power_avg = cmd.ask_burst_power_avg()
+            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
+            res.append((dcdc, power_pk, power_avg, vpf, vpr))
+            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+        return res
+    finally:
+        bts.umtrx_set_dcdc_r(UMTRX_DCDC_DEF)
+
 
 #
 # Helpers
