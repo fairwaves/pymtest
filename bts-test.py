@@ -495,6 +495,7 @@ def test_burst_power_peak_wait(cmd, timeout):
     t = time.time()
     while res != TEST_OK and time.time()-t < timeout:
         res = test_burst_power_peak(cmd)
+    res = test_burst_power_peak(cmd)
     return res
 
 
