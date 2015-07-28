@@ -993,6 +993,11 @@ try:
                 run_tx_tests()
                 tr.set_test_scope("TRX%d/BER1" % trx)
                 run_ber_tests()
+                tr.set_test_scope("TRX%d/power" % trx)
+                test_power_vswr_vga2(cmd, bts, trx)
+                test_power_vswr_dcdc(cmd, bts, trx)
+                ui_ask("Disconnect cable from the TRX%d." % trx)
+                test_vswr_vga2(bts, trx)
 finally:
     # switch back to TRX1
     bts.trx_set_primary(1)
