@@ -70,8 +70,8 @@ TEST_NAMES = {
     "tester_serial": "Tester system serial number",
     "tester_version": "Tester system version",
     "tester_options": "Tester installed options",
-    "burst_power_peak": "TRX output power (dBm)",
     "bcch_presence": "BCCH detected",
+    "burst_power_peak": "TRX output power (dBm)",
     "burst_power_avg": "Burst avg power (dBm)",
     "burst_power_array": "Burst power array (dBm)",
     "freq_error": "Frequency error (Hz)",
@@ -131,10 +131,10 @@ TEST_CHECKS = {
     "tester_serial": test_ignore_checker(),
     "tester_version": test_ignore_checker(),
     "tester_options": test_ignore_checker(),
+    "bcch_presence": test_bool_checker(),
     "burst_power_peak": test_minmax_checker(
         UMSITE_TM3_PARAMS["burst_power_peak_min"],
         UMSITE_TM3_PARAMS["burst_power_peak_max"]),
-    "bcch_presence": test_bool_checker(),
     "burst_power_avg": test_minmax_checker(
         UMSITE_TM3_PARAMS["burst_power_peak_min"],
         UMSITE_TM3_PARAMS["burst_power_peak_max"]),
