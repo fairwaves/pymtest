@@ -980,33 +980,23 @@ cmd = cmd57_init(args.cmd57_port)
 cmd.switch_to_man_bidl()
 cmd57_configure(cmd, args.arfcn)
 
-resp = ui_ask("Connect CMD57 to the TRX1.")
-if resp != 's':
-    tr.set_test_scope("TRX1")
+try:
+    for trx in [1, 2]:
+        resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
+        if resp != 's':
+            tr.set_test_scope("TRX%d" % trx)
+            bts.trx_set_primary(trx)
+            bts.restart_runit_service("osmo-trx")
+            run_cmd57_info()
+            res = run_tch_sync()
+            if res == TEST_OK:
+                run_tx_tests()
+                tr.set_test_scope("TRX%d/BER1" % trx)
+                run_ber_tests()
+finally:
+    # switch back to TRX1
     bts.trx_set_primary(1)
     bts.restart_runit_service("osmo-trx")
-    run_cmd57_info()
-    res = run_tch_sync()
-    if res == TEST_OK:
-        run_tx_tests()
-        tr.set_test_scope("TRX1/BER1")
-        run_ber_tests()
-
-resp = ui_ask("Connect CMD57 to the TRX2.")
-if resp != 's':
-    tr.set_test_scope("TRX2")
-    bts.trx_set_primary(2)
-    bts.restart_runit_service("osmo-trx")
-    run_cmd57_info()
-    res = run_tch_sync()
-    if res == TEST_OK:
-        run_tx_tests()
-        tr.set_test_scope("TRX2/BER1")
-        run_ber_tests()
-
-# switch back to TRX1
-bts.trx_set_primary(1)
-bts.restart_runit_service("osmo-trx")
 
 
 #
