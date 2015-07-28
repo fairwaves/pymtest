@@ -708,29 +708,21 @@ def run_cmd57_info():
     test_tester_options(cmd)
 
 
-def run_tx_tests():
+def run_tch_sync():
     print("Starting Tx tests.")
 
     # Make sure we start in idle mode
     cmd.switch_to_idle()
 
-    # TODO: Check GPS LEDs, 1pps, NMEA
-
-    # TODO: Calibrate frequency
-    #calibrate_freq_error(cmd)
-
-    # Prepare for BCCH measurements
-    # res = test_bcch_presence(cmd)
-    # if res != TEST_OK:
-    #     return res
-
     # Measure peak power before everything else
     test_burst_power_peak_wait(cmd, 20)
 
     # Prepare for TCH tests
-    res = test_enable_tch_loopback(cmd, bts)
-    if res != TEST_OK:
-        return res
+    return test_enable_tch_loopback(cmd, bts)
+
+
+def run_tx_tests():
+    print("Starting Tx tests.")
 
     # Burst power measurements
     test_burst_power_avg(cmd)
@@ -872,9 +864,11 @@ if resp != 's':
     bts.trx_set_primary(1)
     bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
-    run_tx_tests()
-    tr.set_test_scope("TRX1/BER1")
-    run_ber_tests()
+    res = run_tch_sync()
+    if res == TEST_OK:
+        run_tx_tests()
+        tr.set_test_scope("TRX1/BER1")
+        run_ber_tests()
 
 resp = ui_ask("Connect CMD57 to the TRX2.")
 if resp != 's':
@@ -882,9 +876,11 @@ if resp != 's':
     bts.trx_set_primary(2)
     bts.restart_runit_service("osmo-trx")
     run_cmd57_info()
-    run_tx_tests()
-    tr.set_test_scope("TRX2/BER1")
-    run_ber_tests()
+    res = run_tch_sync()
+    if res == TEST_OK:
+        run_tx_tests()
+        tr.set_test_scope("TRX2/BER1")
+        run_ber_tests()
 
 # switch back to TRX1
 bts.trx_set_primary(1)
