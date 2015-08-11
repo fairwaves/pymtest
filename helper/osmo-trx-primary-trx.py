@@ -27,7 +27,7 @@ f.close()
 # Process the file
 #
 
-trx_re = re.compile(r'^[^#].* osmo-trx ')
+trx_re = re.compile(r'^[^#].*[/ ]osmo-trx ')
 for i in range(len(lines)):
     if trx_re.match(lines[i]) is not None:
         s = lines[i].split()
@@ -57,6 +57,10 @@ for i in range(len(lines)):
 # Write the file back
 #
 
-f = open(CONFIG_FILE_NAME, 'w')
-f.writelines(lines)
-f.close()
+if action == '?':
+    # Normally we shouldn't get here
+    print "unknown"
+else:
+    f = open(CONFIG_FILE_NAME, 'w')
+    f.writelines(lines)
+    f.close()
