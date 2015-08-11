@@ -8,9 +8,9 @@ OPTION = '-S'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("trx", type=str, default='',
-                    help="Pass 'TRX1' to choose TRX1 as primary TRX. "
-                         "Pass 'TRX2' to choose TRX2 as primary TRX. "
-                         "Omit to read the current setting.")
+                    help="Pass '1' to choose TRX1 as the primary TRX. "
+                         "Pass '2' to choose TRX2 as the primary TRX. "
+                         "Pass '?' to read the current setting.")
 args = parser.parse_args()
 
 action = args.trx
