@@ -95,6 +95,7 @@ TEST_NAMES = {
     "spectrum_switching_tolerance_rel": "Switching spectrum relative tolerance mask (dBc)",
     "spectrum_switching": "Switching spectrum measured (dBc)",
     "spectrum_switching_match": "Switching spectrum match",
+    "ber_configure": "BER test configuration",
     "ber_used_ts_power": "Used TS power (dBm)",
     "ber_unused_ts_power": "Unused TS power (dBm)",
     "ber_frames_num": "Frames to send",
@@ -210,6 +211,7 @@ TEST_CHECKS = {
     "spectrum_switching_tolerance_rel": test_ignore_checker(),
     "spectrum_switching": test_ignore_checker(),
     "spectrum_switching_match": test_ignore_checker(),
+    "ber_configure": test_ignore_checker(),
     "ber_used_ts_power": test_ignore_checker(),
     "ber_unused_ts_power": test_ignore_checker(),
     "ber_frames_num": test_ignore_checker(),
@@ -754,6 +756,15 @@ def test_spectrum_switching_match(cmd):
 #
 
 
+@test_checker_decorator("ber_configure")
+def test_ber_configure(cmd, dut):
+    if dut == "UmTRX":
+        cmd.set_ber_test_num(3)
+        return cmd.set_ber_used_ts_power(-75)
+    else:
+        return cmd.set_ber_test_num(1)
+
+
 @test_checker_decorator("ber_used_ts_power")
 def test_ber_used_ts_power(cmd):
     return cmd.ask_ber_used_ts_power()
@@ -1032,8 +1043,10 @@ def run_tx_tests():
     test_spectrum_switching_match(cmd)
 
 
-def run_ber_tests():
+def run_ber_tests(dut):
     print("Starting BER tests.")
+
+    test_ber_configure(cmd, dut)
 
     # BER test settings
     test_ber_used_ts_power(cmd)
