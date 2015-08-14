@@ -314,8 +314,9 @@ def test_checker_decorator(testname):
 ###############################
 #   BTS control functions
 ###############################
+import subprocess32 as subprocess
 
-class BtsControlSsh:
+class BtsControlBase:
 
     helpers = ["obscvty.py", "osmobts-en-loopback.py",
                "osmobts-set-maxdly.py", "osmobts-set-slotmask.py",
@@ -325,20 +326,12 @@ class BtsControlSsh:
                "umtrx_property_tree.py",
                "umtrx_ctrl.py", "umtrx_lms.py"]
 
-    def __init__(self, bts_ip, username='fairwaves', password='fairwaves',
-                 tmpdir='/tmp/bts-test'):
-        ''' Connect to a BTS and preapre it for testing '''
-        self.ssh = paramiko.SSHClient()
-        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(bts_ip, username=username, password=password)
-
+    def __init__(self, tmpdir='/tmp/bts-test'):
+        ''' Connect to a BTS and prepare it for testing '''
         # Copy helper scripts to the BTS
         self.tmpdir = tmpdir
-        stdin, stdout, stderr = self.ssh.exec_command('mkdir -p '+self.tmpdir)
-        sftp = self.ssh.open_sftp()
-        for f in self.helpers:
-            sftp.put('helper/'+f, self.tmpdir+'/'+f)
-        sftp.close()
+        self._exec_stdout('mkdir -p '+self.tmpdir)
+        self._copy_file_list('helper/', self.helpers, self.tmpdir)
 
     def _tee(self, stream, filename):
         ''' Write lines from the stream to the file and return the lines '''
@@ -350,100 +343,99 @@ class BtsControlSsh:
 
     def get_uname(self):
         ''' Get uname string '''
-        stdin, stdout, stderr = self.ssh.exec_command('uname -a')
-        return stdout.readline().strip()
+        return self._exec_stdout('uname -a').strip()
 
     def trx_set_primary(self, num):
         ''' Set primary TRX '''
         print "Setting primary TRX to TRX%d" % num
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'sudo python osmo-trx-primary-trx.py %d' % num)
-        print stderr.readlines() + stdout.readlines()
 
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
         print "Enabling BTS loopback"
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-en-loopback.py')
-        print stderr.readlines() + stdout.readlines()
 
     def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
         ''' Set BTS TRX0 slotmask '''
         print "Setting BTS slotmask"
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
             % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
-        print stderr.readlines() + stdout.readlines()
 
     def bts_set_maxdly(self, val):
         ''' Set BTS TRX0 max timing advance '''
         print("BTS: setting max delay to %d." % val)
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
-        print stderr.readlines() + stdout.readlines()
 
     def umtrx_set_dcdc_r(self, val):
         ''' Set UmTRX DCDC control register value '''
 #        print("UmTRX: setting DCDC control register to %d." % val)
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_set_dcdc_r.py %d' % val)
-        stdout.readlines()
 
     def umtrx_set_tx_vga2(self, chan, val):
         ''' Set UmTRX Tx VGA2 gain '''
 #        print("UmTRX: setting UmTRX Tx VGA2 gain for chan %d to %d."
 #              % (chan, val))
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_lms.py --lms %d --lms-set-tx-vga2-gain %d'
             % (chan, val))
-        stdout.readlines()
 
     def umtrx_get_vswr_sensors(self, chan):
         ''' Read UmTRX VPR and VPF sensors '''
-        stdin, stdout, stderr = self.ssh.exec_command(
+        lines = self._exec_stdout(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_get_vswr_sensors.py')
-        res = [float(x.strip()) for x in stdout.readlines()]
+        res = [float(x.strip()) for x in lines]
         start = (chan-1)*2
         return res[start:start+2]
 
     def start_runit_service(self, service):
         ''' Start a runit controlled service '''
         print("Starting '%s' service." % service)
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'sudo sv start %s' % service)
         # TODO: Check result
-        print stderr.readlines() + stdout.readlines()
 
     def stop_runit_service(self, service):
         ''' Stop a runit controlled service '''
         print("Stopping '%s' service." % service)
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'sudo sv stop %s' % service)
         # TODO: Check result
-        print stderr.readlines() + stdout.readlines()
 
     def restart_runit_service(self, service):
         ''' Restart a runit controlled service '''
         print("Restarting '%s' service." % service)
-        stdin, stdout, stderr = self.ssh.exec_command(
+        return self._exec_stdout_stderr(
             'sudo sv restart %s' % service)
         # TODO: Check result
-        print stderr.readlines() + stdout.readlines()
+
+    def osmo_trx_start(self):
+        return self.start_runit_service("osmo-trx")
+
+    def osmo_trx_stop(self):
+        return self.stop_runit_service("osmo-trx")
+
+    def osmo_trx_restart(self):
+        return self.restart_runit_service("osmo-trx")
 
     def get_umtrx_eeprom_val(self, name):
         ''' Read UmTRX serial from EEPROM.
             All UHD apps should be stopped at the time of reading. '''
-        stdin, stdout, stderr = self.ssh.exec_command(
+        lines = self._exec_stdout_stderr(
             '/usr/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
         eeprom_val = re.compile(r'    EEPROM \["'+name+r'"\] is "(.*)"')
-        for s in stdout.readlines():
+        for s in lines:
             match = eeprom_val.match(s)
             if match is not None:
                 return match.group(1)
@@ -455,7 +447,7 @@ class BtsControlSsh:
                      GSM850, EGSM900 (same as GSM900),
                      GSM1800 (same as DCS1800), GSM1900 (same as PCS1900)
             All UHD apps should be stopped at the time of executing. '''
-        stdin, stdout, stderr = self.ssh.exec_command(
+        stdin, stdout, stderr = self._exec(
             'sudo umtrx_auto_calibration %s' % preset)
         # TODO: Check result
         lines = self._tee(stdout, filename_stdout)
@@ -467,6 +459,116 @@ class BtsControlSsh:
                 if match.group(1) != 'SUCCESS':
                     return False
         return True
+
+
+class BtsControlSsh(BtsControlBase):
+
+    def __init__(self, bts_ip, username='fairwaves', password='fairwaves',
+                 tmpdir='/tmp/bts-test'):
+        ''' Connect to a BTS and prepare it for testing '''
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh.connect(bts_ip, username=username, password=password)
+
+    def _copy_file_list(self, dir_from, flie_list, dir_to):
+        sftp = self.ssh.open_sftp()
+        for f in flie_list:
+            sftp.put(dir_from+f, dir_to+'/'+f)
+        sftp.close()
+
+    def _exec(self, cmd_str):
+        return self.ssh.exec_command(cmd_str)
+
+    def _exec_stdout(self, cmd_str):
+        stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
+        return stdout.readline()
+
+    def _exec_stdout_stderr(self, cmd_str):
+        stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
+        return stderr.readlines() + stdout.readlines()
+
+
+class BtsControlLocalManual(BtsControlBase):
+
+    def __init__(self, tmpdir='/tmp/bts-test'):
+        ''' Connect to a BTS and prepare it for testing '''
+        BtsControlBase.__init__(self, tmpdir)
+
+    def _copy_file_list(self, dir_from, flie_list, dir_to):
+        for f in flie_list:
+            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
+
+    def _exec(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True)
+        return (p.stdin, p.stdout, p.stderr)
+
+    def _exec_stdout(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdout=subprocess.PIPE,
+                             shell=True)
+        return p.stdout.readline()
+
+    def _exec_stdout_stderr(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             shell=True)
+        return p.stdout.readlines()
+
+    def osmo_trx_start(self):
+        ui_ask("Please start osmo-trx")
+
+    def osmo_trx_stop(self):
+        ui_ask("Please stop osmo-trx")
+
+    def osmo_trx_restart(self):
+        ui_ask("Please restart osmo-trx")
+
+
+class BtsControlLocal(BtsControlBase):
+
+    def __init__(self, tmpdir='/tmp/bts-test'):
+        ''' Connect to a BTS and prepare it for testing '''
+        BtsControlBase.__init__(self, tmpdir)
+
+    def _copy_file_list(self, dir_from, flie_list, dir_to):
+        for f in flie_list:
+            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
+
+    def _exec(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True)
+        return (p.stdin, p.stdout, p.stderr)
+
+    def _exec_stdout(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdout=subprocess.PIPE,
+                             shell=True)
+        return p.stdout.readline()
+
+    def _exec_stdout_stderr(self, cmd_str):
+        p = subprocess.Popen(cmd_str,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             shell=True)
+        return p.stdout.readlines()
+
+    def osmo_trx_start(self):
+        return self._exec_stdout_stderr("sudo sv start osmo-trx")
+
+    def osmo_trx_stop(self):
+        return self._exec_stdout_stderr("sudo sv stop osmo-trx")
+
+    def osmo_trx_restart(self):
+        return self._exec_stdout_stderr("sudo sv restart osmo-trx")
+
 
 ###############################
 #   non-CMD57 based tests
@@ -864,7 +966,7 @@ def run_bts_tests():
     print("Starting BTS tests.")
 
     # Stop osmo-trx to unlock UmTRX
-    bts.stop_runit_service("osmo-trx")
+    bts.osmo_trx_stop()
 
     # Collect information about the BTS
     bts_read_uname(bts)
@@ -878,7 +980,7 @@ def run_bts_tests():
     bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # Start osmo-trx again
-    bts.start_runit_service("osmo-trx")
+    bts.osmo_trx_start()
 
 
 def run_cmd57_info():
@@ -1004,6 +1106,11 @@ def ui_ask(text):
 #   Main
 ##################
 
+EQUIPMENT_TYPES = ["UmTRX", "UmSITE-TM3-900"]
+
+# Device under test type
+dut = "UmTRX"
+
 #
 #   Initialization
 #
@@ -1021,7 +1128,13 @@ tr = TestResults(TEST_CHECKS)
 
 # Establish ssh connection with the BTS under test
 print("Establishing connection with the BTS.")
-bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
+if args.bts_ip == "local":
+    bts = BtsControlLocal()
+elif args.bts_ip == "manual":
+    bts = BtsControlLocalManual()
+else:
+    bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
+
 # CMD57 has sloppy time synchronization, so burst timing can drift
 # by a few symbols
 bts.bts_set_maxdly(10)
@@ -1036,6 +1149,11 @@ run_bts_tests()
 # Establish connection with CMD57 and configure it
 print("Establishing connection with the CMD57.")
 cmd = cmd57_init(args.cmd57_port)
+if dut == "UmTRX":
+    cmd.set_io_used('I1O2')
+else:
+    cmd.set_io_used('I1O1')
+
 cmd.switch_to_man_bidl()
 cmd57_configure(cmd, args.arfcn)
 
@@ -1044,23 +1162,24 @@ try:
         resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
         if resp != 's':
             tr.set_test_scope("TRX%d" % trx)
-            bts.trx_set_primary(trx)
-            bts.restart_runit_service("osmo-trx")
+            print bts.trx_set_primary(trx)
+            bts.osmo_trx_restart()
             run_cmd57_info()
             res = run_tch_sync()
             if res == TEST_OK:
                 run_tx_tests()
                 tr.set_test_scope("TRX%d/BER1" % trx)
-                run_ber_tests()
-                tr.set_test_scope("TRX%d/power" % trx)
-                test_power_vswr_vga2(cmd, bts, trx)
-                test_power_vswr_dcdc(cmd, bts, trx)
-                ui_ask("Disconnect cable from the TRX%d." % trx)
-                test_vswr_vga2(bts, trx)
+                run_ber_tests(dut)
+                if dut == "UmSITE-TM3-900":
+                    tr.set_test_scope("TRX%d/power" % trx)
+                    test_power_vswr_vga2(cmd, bts, trx)
+                    test_power_vswr_dcdc(cmd, bts, trx)
+                    ui_ask("Disconnect cable from the TRX%d." % trx)
+                    test_vswr_vga2(bts, trx)
 finally:
     # switch back to TRX1
     bts.trx_set_primary(1)
-    bts.restart_runit_service("osmo-trx")
+    bts.osmo_trx_restart()
 
 
 #
