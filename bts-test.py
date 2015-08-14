@@ -69,6 +69,7 @@ TEST_RESULT_NAMES = {
 
 # TODO: Merge TEST_NAMES and TEST_CHECKS into a single class
 TEST_NAMES = {
+    "test_id": "Test ID",
     "bts_uname": "BTS system information",
     "umtrx_serial": "UmTRX serial number",
     "umtrx_autocalibrate": "UmTRX autocalibration",
@@ -173,6 +174,7 @@ UMTRX_2_2_PARAMS = {
 DUT_PARAMS = UMTRX_2_2_PARAMS
 
 TEST_CHECKS = {
+    "test_id": test_none_checker(),
     "bts_uname": test_ignore_checker(),
     "umtrx_serial": test_none_checker(),
     "umtrx_autocalibrate": test_bool_checker(),
@@ -479,6 +481,18 @@ def bts_read_uname(bts):
 @test_checker_decorator("umtrx_serial")
 def bts_read_umtrx_serial(bts):
     return bts.get_umtrx_eeprom_val("serial")
+
+
+@test_checker_decorator("test_id")
+def gen_test_id():
+    ''' Generates a unique test ID '''
+    uname_res = tr.get_test_result("bts_uname")
+    serial_res =  tr.get_test_result("umtrx_serial")
+    if uname_res[1] != TEST_OK or serial_res[1] != TEST_OK:
+        return None
+    name = uname_res[2].split()[1]
+    timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
+    return name+'_'+serial_res[2]+'_'+timestr
 
 
 @test_checker_decorator("umtrx_autocalibrate")
@@ -856,8 +870,12 @@ def run_bts_tests():
     bts_read_uname(bts)
     bts_read_umtrx_serial(bts)
 
+    # Generate Test ID to be used in file names
+    gen_test_id()
+
     # Autocalibrate UmTRX
-    bts_umtrx_autocalibrate(bts, "GSM900", "calibration.log", "calibration.err.log")
+    test_id = tr.get_test_result("test_id")[2]
+    bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # Start osmo-trx again
     bts.start_runit_service("osmo-trx")
@@ -1049,6 +1067,7 @@ finally:
 #   Dump report to a JSON file
 #
 
-f = file("bts-test.log.json", 'w')
+test_id = str(tr.get_test_result("test_id")[2])
+f = file("bts-test."+test_id+".json", 'w')
 f.write(tr.json())
 f.close()
