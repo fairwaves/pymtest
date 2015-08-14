@@ -125,12 +125,52 @@ TEST_NAMES = {
 UMSITE_TM3_PARAMS = {
     "burst_power_peak_min": 34,  # dBm
     "burst_power_peak_max": 36,  # dBm
+    "burst_power_avg_min": 34,  # dBm
+    "burst_power_avg_max": 36,  # dBm
     "freq_error": 50,  # Hz
     "phase_err_pk_min": -10.0,  # deg
     "phase_err_pk_max":  10.0,  # deg
     "phase_err_avg_min": 0.5,  # deg
     "phase_err_avg_max": 2.0,  # deg
 }
+
+UMTRX_2_3_1_PARAMS = {
+    "burst_power_peak_min": 9,  # dBm
+    "burst_power_peak_max": 14,  # dBm
+    "burst_power_avg_min": 9,  # dBm
+    "burst_power_avg_max": 14,  # dBm
+    "freq_error": 50,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 2.0,  # deg
+}
+
+UMTRX_2_2_PARAMS_OLD = {
+    "burst_power_peak_min": 4,  # dBm
+    "burst_power_peak_max": 5,  # dBm
+    "burst_power_avg_min": 6,  # dBm
+    "burst_power_avg_max": 7,  # dBm
+    "freq_error": 50,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 3.0,  # deg
+}
+
+UMTRX_2_2_PARAMS = {
+    "burst_power_peak_min": 15,  # dBm
+    "burst_power_peak_max": 16,  # dBm
+    "burst_power_avg_min": 14,  # dBm
+    "burst_power_avg_max": 16.5,  # dBm
+    "freq_error": 50,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 3.0,  # deg
+}
+
+DUT_PARAMS = UMTRX_2_2_PARAMS
 
 TEST_CHECKS = {
     "bts_uname": test_ignore_checker(),
@@ -142,22 +182,22 @@ TEST_CHECKS = {
     "tester_options": test_ignore_checker(),
     "bcch_presence": test_bool_checker(),
     "burst_power_peak": test_minmax_checker(
-        UMSITE_TM3_PARAMS["burst_power_peak_min"],
-        UMSITE_TM3_PARAMS["burst_power_peak_max"]),
+        DUT_PARAMS["burst_power_peak_min"],
+        DUT_PARAMS["burst_power_peak_max"]),
     "burst_power_avg": test_minmax_checker(
-        UMSITE_TM3_PARAMS["burst_power_peak_min"],
-        UMSITE_TM3_PARAMS["burst_power_peak_max"]),
+        DUT_PARAMS["burst_power_avg_min"],
+        DUT_PARAMS["burst_power_avg_max"]),
     "burst_power_array": test_ignore_checker(),
     "freq_error": test_minmax_checker(
-        -UMSITE_TM3_PARAMS["freq_error"],
-        UMSITE_TM3_PARAMS["freq_error"]),
+        -DUT_PARAMS["freq_error"],
+        DUT_PARAMS["freq_error"]),
     "phase_err_array": test_ignore_checker(),
     "phase_err_pk": test_minmax_checker(
-        UMSITE_TM3_PARAMS["phase_err_pk_min"],
-        UMSITE_TM3_PARAMS["phase_err_pk_max"]),
+        DUT_PARAMS["phase_err_pk_min"],
+        DUT_PARAMS["phase_err_pk_max"]),
     "phase_err_avg": test_minmax_checker(
-        UMSITE_TM3_PARAMS["phase_err_avg_min"],
-        UMSITE_TM3_PARAMS["phase_err_avg_max"]),
+        DUT_PARAMS["phase_err_avg_min"],
+        DUT_PARAMS["phase_err_avg_max"]),
     "spectrum_modulation_offsets": test_ignore_checker(),
     "spectrum_modulation_tolerance_abs": test_ignore_checker(),
     "spectrum_modulation_tolerance_rel": test_ignore_checker(),
