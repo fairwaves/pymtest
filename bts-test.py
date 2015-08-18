@@ -975,7 +975,7 @@ def run_bts_tests():
     gen_test_id()
 
     # Autocalibrate UmTRX
-    test_id = tr.get_test_result("test_id")[2]
+    test_id = str(tr.get_test_result("test_id")[2])
     bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # Start osmo-trx again
@@ -1182,12 +1182,12 @@ finally:
     bts.trx_set_primary(1)
     bts.osmo_trx_restart()
 
+    #
+    #   Dump report to a JSON file
+    #
 
-#
-#   Dump report to a JSON file
-#
-
-test_id = str(tr.get_test_result("test_id")[2])
-f = file("bts-test."+test_id+".json", 'w')
-f.write(tr.json())
-f.close()
+    tr.set_test_scope("system")
+    test_id = str(tr.get_test_result("test_id")[2])
+    f = file("bts-test."+test_id+".json", 'w')
+    f.write(tr.json())
+    f.close()
