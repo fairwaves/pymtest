@@ -137,27 +137,15 @@ UMSITE_TM3_PARAMS = {
 }
 
 UMTRX_2_3_1_PARAMS = {
-    "burst_power_peak_min": 9,  # dBm
-    "burst_power_peak_max": 14,  # dBm
-    "burst_power_avg_min": 9,  # dBm
-    "burst_power_avg_max": 14,  # dBm
+    "burst_power_peak_min": 19,  # dBm
+    "burst_power_peak_max": 24,  # dBm
+    "burst_power_avg_min": 19,  # dBm
+    "burst_power_avg_max": 24,  # dBm
     "freq_error": 50,  # Hz
     "phase_err_pk_min": -10.0,  # deg
     "phase_err_pk_max":  10.0,  # deg
     "phase_err_avg_min": 0.5,  # deg
     "phase_err_avg_max": 2.0,  # deg
-}
-
-UMTRX_2_2_PARAMS_OLD = {
-    "burst_power_peak_min": 4,  # dBm
-    "burst_power_peak_max": 5,  # dBm
-    "burst_power_avg_min": 6,  # dBm
-    "burst_power_avg_max": 7,  # dBm
-    "freq_error": 50,  # Hz
-    "phase_err_pk_min": -10.0,  # deg
-    "phase_err_pk_max":  10.0,  # deg
-    "phase_err_avg_min": 0.5,  # deg
-    "phase_err_avg_max": 3.0,  # deg
 }
 
 UMTRX_2_2_PARAMS = {
