@@ -150,9 +150,9 @@ UMTRX_2_3_1_PARAMS = {
 
 UMTRX_2_2_PARAMS = {
     "burst_power_peak_min": 15,  # dBm
-    "burst_power_peak_max": 16.5,  # dBm
+    "burst_power_peak_max": 17,  # dBm
     "burst_power_avg_min": 14,  # dBm
-    "burst_power_avg_max": 16.5,  # dBm
+    "burst_power_avg_max": 17,  # dBm
     "freq_error": 50,  # Hz
     "phase_err_pk_min": -10.0,  # deg
     "phase_err_pk_max":  10.0,  # deg
