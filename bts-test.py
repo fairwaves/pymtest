@@ -1171,6 +1171,9 @@ try:
                 run_tx_tests()
                 tr.set_test_scope("TRX%d/BER1" % trx)
                 run_ber_tests(dut)
+                if tr.get_test_result("ber_test_result")[1] != TEST_OK:
+                    print("Re-running BER test")
+                    run_ber_tests(dut)
                 if dut == "UmSITE-TM3-900":
                     tr.set_test_scope("TRX%d/power" % trx)
                     test_power_vswr_vga2(cmd, bts, trx)
