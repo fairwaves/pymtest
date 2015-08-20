@@ -243,8 +243,10 @@ class TestResults:
         if scope in self.test_results:
             self.test_results[scope] = {}
 
-    def _get_scope_subtree(self):
-        return self.test_results.setdefault(self.scope, {})
+    def _get_scope_subtree(self, scope=None):
+        if scope is None:
+            scope = self.scope
+        return self.test_results.setdefault(scope, {})
 
     def set_test_result(self, testname, result, value=None):
         t = time.time()
@@ -264,8 +266,8 @@ class TestResults:
         self.set_test_result(testname, res, value)
         return res
 
-    def get_test_result(self, testname):
-        return self._get_scope_subtree().get(testname, (0, TEST_NA, None))
+    def get_test_result(self, testname, scope=None):
+        return self._get_scope_subtree(scope).get(testname, (0, TEST_NA, None))
 
     def json(self):
         return json.dumps(self.test_results,
@@ -582,8 +584,8 @@ def bts_read_umtrx_serial(bts):
 @test_checker_decorator("test_id")
 def gen_test_id():
     ''' Generates a unique test ID '''
-    uname_res = tr.get_test_result("bts_uname")
-    serial_res =  tr.get_test_result("umtrx_serial")
+    uname_res = tr.get_test_result("bts_uname", "system")
+    serial_res =  tr.get_test_result("umtrx_serial", "system")
     if uname_res[1] != TEST_OK or serial_res[1] != TEST_OK:
         return None
     name = uname_res[2].split()[1]
@@ -979,7 +981,7 @@ def run_bts_tests():
     gen_test_id()
 
     # Autocalibrate UmTRX
-    test_id = str(tr.get_test_result("test_id")[2])
+    test_id = str(tr.get_test_result("test_id", "system")[2])
     bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # Start osmo-trx again
@@ -1195,8 +1197,7 @@ finally:
     #   Dump report to a JSON file
     #
 
-    tr.set_test_scope("system")
-    test_id = str(tr.get_test_result("test_id")[2])
+    test_id = str(tr.get_test_result("test_id", "system")[2])
     f = file("bts-test."+test_id+".json", 'w')
     f.write(tr.json())
     f.close()
