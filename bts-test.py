@@ -239,6 +239,10 @@ class TestResults:
     def set_test_scope(self, scope):
         self.scope = scope
 
+    def clear_test_scope(self, scope):
+        if scope in self.test_results:
+            self.test_results[scope] = {}
+
     def _get_scope_subtree(self):
         return self.test_results.setdefault(self.scope, {})
 
@@ -1169,10 +1173,12 @@ try:
             res = run_tch_sync()
             if res == TEST_OK:
                 run_tx_tests()
-                tr.set_test_scope("TRX%d/BER1" % trx)
+                ber_scope = "TRX%d/BER" % trx
+                tr.set_test_scope(ber_scope)
                 run_ber_tests(dut)
                 if tr.get_test_result("ber_test_result")[1] != TEST_OK:
                     print("Re-running BER test")
+                    tr.clear_test_scope(ber_scope)
                     run_ber_tests(dut)
                 if dut == "UmSITE-TM3-900":
                     tr.set_test_scope("TRX%d/power" % trx)
