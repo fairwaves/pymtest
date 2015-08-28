@@ -465,6 +465,7 @@ class BtsControlSsh(BtsControlBase):
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(bts_ip, username=username, password=password)
+        BtsControlBase.__init__(self, tmpdir)
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         sftp = self.ssh.open_sftp()
