@@ -339,7 +339,7 @@ class BtsControlBase:
 
     def get_uname(self):
         ''' Get uname string '''
-        return self._exec_stdout('uname -a').strip()
+        return self._exec_stdout('uname -a')[0].strip()
 
     def trx_set_primary(self, num):
         ''' Set primary TRX '''
@@ -477,7 +477,7 @@ class BtsControlSsh(BtsControlBase):
 
     def _exec_stdout(self, cmd_str):
         stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
-        return stdout.readline()
+        return stdout.readlines()
 
     def _exec_stdout_stderr(self, cmd_str):
         stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
@@ -506,7 +506,7 @@ class BtsControlLocalManual(BtsControlBase):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              shell=True)
-        return p.stdout.readline()
+        return p.stdout.readlines()
 
     def _exec_stdout_stderr(self, cmd_str):
         p = subprocess.Popen(cmd_str,
@@ -547,7 +547,7 @@ class BtsControlLocal(BtsControlBase):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              shell=True)
-        return p.stdout.readline()
+        return p.stdout.readlines()
 
     def _exec_stdout_stderr(self, cmd_str):
         p = subprocess.Popen(cmd_str,
