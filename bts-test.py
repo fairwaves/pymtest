@@ -160,9 +160,9 @@ UMTRX_2_2_PARAMS = {
     "phase_err_avg_max": 3.0,  # deg
 }
 
-DUT_PARAMS = UMTRX_2_2_PARAMS
 
-TEST_CHECKS = {
+def generate_checks(param_set):
+    return {
     "test_id": test_none_checker(),
     "bts_uname": test_ignore_checker(),
     "umtrx_serial": test_none_checker(),
@@ -173,22 +173,22 @@ TEST_CHECKS = {
     "tester_options": test_ignore_checker(),
     "bcch_presence": test_bool_checker(),
     "burst_power_peak": test_minmax_checker(
-        DUT_PARAMS["burst_power_peak_min"],
-        DUT_PARAMS["burst_power_peak_max"]),
+        param_set["burst_power_peak_min"],
+        param_set["burst_power_peak_max"]),
     "burst_power_avg": test_minmax_checker(
-        DUT_PARAMS["burst_power_avg_min"],
-        DUT_PARAMS["burst_power_avg_max"]),
+        param_set["burst_power_avg_min"],
+        param_set["burst_power_avg_max"]),
     "burst_power_array": test_ignore_checker(),
     "freq_error": test_minmax_checker(
-        -DUT_PARAMS["freq_error"],
-        DUT_PARAMS["freq_error"]),
+        -param_set["freq_error"],
+        param_set["freq_error"]),
     "phase_err_array": test_ignore_checker(),
     "phase_err_pk": test_minmax_checker(
-        DUT_PARAMS["phase_err_pk_min"],
-        DUT_PARAMS["phase_err_pk_max"]),
+        param_set["phase_err_pk_min"],
+        param_set["phase_err_pk_max"]),
     "phase_err_avg": test_minmax_checker(
-        DUT_PARAMS["phase_err_avg_min"],
-        DUT_PARAMS["phase_err_avg_max"]),
+        param_set["phase_err_avg_min"],
+        param_set["phase_err_avg_max"]),
     "spectrum_modulation_offsets": test_ignore_checker(),
     "spectrum_modulation_tolerance_abs": test_ignore_checker(),
     "spectrum_modulation_tolerance_rel": test_ignore_checker(),
@@ -1079,7 +1079,7 @@ def run_ber_tests(dut):
 ###############################
 
 
-def parse_args():
+def parse_args(devices, default_device):
     parser = argparse.ArgumentParser()
     parser.add_argument("bts_ip", type=str, help="Tested BTS IP address")
     parser.add_argument("-p", "--cmd57-port",
@@ -1089,8 +1089,17 @@ def parse_args():
     parser.add_argument("-a", "--arfcn",
                         type=int, default=100,
                         help="ARFCN to test")
+    parser.add_argument("-d", "--device",
+                        dest='dut', type=str, default=default_device,
+                        help="Device under test type: %s "
+                             "(default: %s)" % (' '.join(devices), default_device))
     return parser.parse_args()
 
+def print_args(args):
+    print "BTS IP address:       %s" % args.bts_ip
+    print "CMD57 port:           %s" % args.cmd57_port
+    print "Device under test:    %s" % args.dut
+    print "ARFCN:                %d" % args.arfcn
 
 ##################
 #   UI functions
@@ -1114,20 +1123,28 @@ def ui_ask(text):
 #   Main
 ##################
 
-EQUIPMENT_TYPES = ["UmTRX", "UmSITE-TM3-900"]
-
-# Device under test type
-dut = "UmTRX"
+EQUIPMENT_TYPES = ["UmSITE-TM3-900", "UmTRX-2.2", "UmTRX-2.3.1"]
 
 #
 #   Initialization
 #
 
 # Parse command line arguments
-args = parse_args()
+args = parse_args(EQUIPMENT_TYPES, EQUIPMENT_TYPES[0])
+print_args(args)
+
+# Select parameter set for the given DUT
+if args.dut == "UmTRX-2.2":
+    param_set = UMTRX_2_2_PARAMS
+elif  args.dut == "UmTRX-2.3.1":
+    param_set = UMTRX_2_3_1_PARAMS
+elif  args.dut == "UmSITE-TM3-900":
+    param_set = UMSITE_TM3_PARAMS
+else:
+    raise RuntimeError("Unknown device under test type: %s" % args.dut)
 
 # Initialize test results structure
-tr = TestResults(TEST_CHECKS)
+tr = TestResults(generate_checks(param_set))
 #test_deps = TestDependencies()
 
 #
@@ -1157,7 +1174,7 @@ run_bts_tests()
 # Establish connection with CMD57 and configure it
 print("Establishing connection with the CMD57.")
 cmd = cmd57_init(args.cmd57_port)
-if dut == "UmTRX":
+if args.dut == "UmTRX":
     cmd.set_io_used('I1O2')
 else:
     cmd.set_io_used('I1O1')
@@ -1178,12 +1195,12 @@ try:
                 run_tx_tests()
                 ber_scope = "TRX%d/BER" % trx
                 tr.set_test_scope(ber_scope)
-                run_ber_tests(dut)
+                run_ber_tests(args.dut)
                 if tr.get_test_result("ber_test_result")[1] != TEST_OK:
                     print("Re-running BER test")
                     tr.clear_test_scope(ber_scope)
-                    run_ber_tests(dut)
-                if dut == "UmSITE-TM3-900":
+                    run_ber_tests(args.dut)
+                if args.dut == "UmSITE-TM3-900":
                     tr.set_test_scope("TRX%d/power" % trx)
                     test_power_vswr_vga2(cmd, bts, trx)
                     test_power_vswr_dcdc(cmd, bts, trx)
