@@ -52,6 +52,11 @@ def test_minmax_checker(min, max):
 def test_ignore_checker():
     return lambda val: TEST_OK
 
+
+def test_substr_checker(okstr):
+    return lambda val: TEST_OK if okstr.find(val) != -1 \
+                               else TEST_FAIL
+
 # Enable/disable debug mode
 _tests_debug = 1
 
@@ -71,8 +76,13 @@ TEST_RESULT_NAMES = {
 TEST_NAMES = {
     "test_id": "Test ID",
     "bts_uname": "BTS system information",
+    "bts_hw_model": "BTS hardware model",
+    "bts_hw_band": "BTS hardware band",
+    "bts_umtrx_ver": "BTS umtrx ver",
+    "umtrx_gps_time": "UmTRX GPS time",
     "umtrx_serial": "UmTRX serial number",
     "umtrx_autocalibrate": "UmTRX autocalibration",
+    "umtrx_reset_test" : "UmTRX Reset and Safe firmware loading test",
     "tester_name": "Tester device name",
     "tester_serial": "Tester system serial number",
     "tester_version": "Tester system version",
@@ -124,109 +134,79 @@ TEST_NAMES = {
     "vswr_vga2": "VSWR vs VGA2"
 }
 
-UMSITE_TM3_PARAMS = {
-    "burst_power_peak_min": 34,  # dBm
-    "burst_power_peak_max": 36,  # dBm
-    "burst_power_avg_min": 34,  # dBm
-    "burst_power_avg_max": 36,  # dBm
-    "freq_error": 50,  # Hz
-    "phase_err_pk_min": -10.0,  # deg
-    "phase_err_pk_max":  10.0,  # deg
-    "phase_err_avg_min": 0.5,  # deg
-    "phase_err_avg_max": 2.0,  # deg
-}
-
-UMTRX_2_3_1_PARAMS = {
-    "burst_power_peak_min": 19,  # dBm
-    "burst_power_peak_max": 24,  # dBm
-    "burst_power_avg_min": 19,  # dBm
-    "burst_power_avg_max": 24,  # dBm
-    "freq_error": 50,  # Hz
-    "phase_err_pk_min": -10.0,  # deg
-    "phase_err_pk_max":  10.0,  # deg
-    "phase_err_avg_min": 0.5,  # deg
-    "phase_err_avg_max": 2.0,  # deg
-}
-
-UMTRX_2_2_PARAMS = {
-    "burst_power_peak_min": 15,  # dBm
-    "burst_power_peak_max": 17,  # dBm
-    "burst_power_avg_min": 14,  # dBm
-    "burst_power_avg_max": 17,  # dBm
-    "freq_error": 50,  # Hz
-    "phase_err_pk_min": -10.0,  # deg
-    "phase_err_pk_max":  10.0,  # deg
-    "phase_err_avg_min": 0.5,  # deg
-    "phase_err_avg_max": 3.0,  # deg
-}
-
-
-def generate_checks(param_set):
+#DUT_PARAMS = UMSITE_TM3_PARAMS
+def init_test_checks(DUT_PARAMS):
     return {
-    "test_id": test_none_checker(),
-    "bts_uname": test_ignore_checker(),
-    "umtrx_serial": test_none_checker(),
-    "umtrx_autocalibrate": test_bool_checker(),
-    "tester_name": test_ignore_checker(),
-    "tester_serial": test_ignore_checker(),
-    "tester_version": test_ignore_checker(),
-    "tester_options": test_ignore_checker(),
-    "bcch_presence": test_bool_checker(),
-    "burst_power_peak": test_minmax_checker(
-        param_set["burst_power_peak_min"],
-        param_set["burst_power_peak_max"]),
-    "burst_power_avg": test_minmax_checker(
-        param_set["burst_power_avg_min"],
-        param_set["burst_power_avg_max"]),
-    "burst_power_array": test_ignore_checker(),
-    "freq_error": test_minmax_checker(
-        -param_set["freq_error"],
-        param_set["freq_error"]),
-    "phase_err_array": test_ignore_checker(),
-    "phase_err_pk": test_minmax_checker(
-        param_set["phase_err_pk_min"],
-        param_set["phase_err_pk_max"]),
-    "phase_err_avg": test_minmax_checker(
-        param_set["phase_err_avg_min"],
-        param_set["phase_err_avg_max"]),
-    "spectrum_modulation_offsets": test_ignore_checker(),
-    "spectrum_modulation_tolerance_abs": test_ignore_checker(),
-    "spectrum_modulation_tolerance_rel": test_ignore_checker(),
-    "spectrum_modulation": test_ignore_checker(),
-    "spectrum_modulation_match": test_val_checker("MATC"),
-    "spectrum_switching_offsets": test_ignore_checker(),
-    "spectrum_switching_tolerance_abs": test_ignore_checker(),
-    "spectrum_switching_tolerance_rel": test_ignore_checker(),
-    "spectrum_switching": test_ignore_checker(),
-    "spectrum_switching_match": test_ignore_checker(),
-    "ber_configure": test_ignore_checker(),
-    "ber_used_ts_power": test_ignore_checker(),
-    "ber_unused_ts_power": test_ignore_checker(),
-    "ber_frames_num": test_ignore_checker(),
-    "ber_max_test_time": test_ignore_checker(),
-    "ber_abort_condition": test_ignore_checker(),
-    "ber_holdoff_time": test_ignore_checker(),
-    "ber_limit_class_1b": test_ignore_checker(),
-    "ber_max_class_1b_samples": test_ignore_checker(),
-    "ber_limit_class_2": test_ignore_checker(),
-    "ber_max_class_2_samples": test_ignore_checker(),
-    "ber_limit_erased_frames": test_ignore_checker(),
-    "ber_max_erased_frames_samples": test_ignore_checker(),
-    "ber_test_result": test_val_checker("PASS"),
-    "ber_class_1b_events": test_ignore_checker(),
-    "ber_class_1b_ber": test_ignore_checker(),
-    "ber_class_1b_rber": test_ignore_checker(),
-    "ber_class_2_events": test_ignore_checker(),
-    "ber_class_2_ber": test_ignore_checker(),
-    "ber_class_2_rber": test_ignore_checker(),
-    "ber_erased_events": test_ignore_checker(),
-    "ber_erased_fer": test_ignore_checker(),
-    "ber_crc_errors": test_ignore_checker(),
-    "enable_tch_loopback": test_ignore_checker(),
-    "power_vswr_vga2": test_none_checker(),
-    "power_vswr_dcdc": test_none_checker(),
-    "vswr_vga2": test_none_checker()
-}
+        "test_id": test_none_checker(),
+        "bts_uname": test_ignore_checker(),
+        "bts_hw_model": test_substr_checker(
+            DUT_PARAMS["hw_model"]),
+        "bts_hw_band": test_ignore_checker(),
+        "bts_umtrx_ver": test_ignore_checker(),
+        "umtrx_serial": test_none_checker(),
+        "umtrx_autocalibrate": test_bool_checker(),
+        "umtrx_reset_test": test_bool_checker(),
+        "umtrx_gps_time": test_bool_checker(),
+        "tester_name": test_ignore_checker(),
+        "tester_serial": test_ignore_checker(),
+        "tester_version": test_ignore_checker(),
+        "tester_options": test_ignore_checker(),
+        "bcch_presence": test_bool_checker(),
+        "burst_power_peak": test_minmax_checker(
+            DUT_PARAMS["burst_power_peak_min"],
+            DUT_PARAMS["burst_power_peak_max"]),
+        "burst_power_avg": test_minmax_checker(
+            DUT_PARAMS["burst_power_avg_min"],
+            DUT_PARAMS["burst_power_avg_max"]),
+        "burst_power_array": test_ignore_checker(),
+        "freq_error": test_minmax_checker(
+            -DUT_PARAMS["freq_error"],
+            DUT_PARAMS["freq_error"]),
+        "phase_err_array": test_ignore_checker(),
+        "phase_err_pk": test_minmax_checker(
+            DUT_PARAMS["phase_err_pk_min"],
+            DUT_PARAMS["phase_err_pk_max"]),
+        "phase_err_avg": test_minmax_checker(
+            DUT_PARAMS["phase_err_avg_min"],
+            DUT_PARAMS["phase_err_avg_max"]),
+        "spectrum_modulation_offsets": test_ignore_checker(),
+        "spectrum_modulation_tolerance_abs": test_ignore_checker(),
+        "spectrum_modulation_tolerance_rel": test_ignore_checker(),
+        "spectrum_modulation": test_ignore_checker(),
+        "spectrum_modulation_match": test_val_checker("MATC"),
+        "spectrum_switching_offsets": test_ignore_checker(),
+        "spectrum_switching_tolerance_abs": test_ignore_checker(),
+        "spectrum_switching_tolerance_rel": test_ignore_checker(),
+        "spectrum_switching": test_ignore_checker(),
+        "spectrum_switching_match": test_ignore_checker(),
+        "ber_configure": test_ignore_checker(),
+        "ber_used_ts_power": test_ignore_checker(),
+        "ber_unused_ts_power": test_ignore_checker(),
+        "ber_frames_num": test_ignore_checker(),
+        "ber_max_test_time": test_ignore_checker(),
+        "ber_abort_condition": test_ignore_checker(),
+        "ber_holdoff_time": test_ignore_checker(),
+        "ber_limit_class_1b": test_ignore_checker(),
+        "ber_max_class_1b_samples": test_ignore_checker(),
+        "ber_limit_class_2": test_ignore_checker(),
+        "ber_max_class_2_samples": test_ignore_checker(),
+        "ber_limit_erased_frames": test_ignore_checker(),
+        "ber_max_erased_frames_samples": test_ignore_checker(),
+        "ber_test_result": test_val_checker("PASS"),
+        "ber_class_1b_events": test_ignore_checker(),
+        "ber_class_1b_ber": test_ignore_checker(),
+        "ber_class_1b_rber": test_ignore_checker(),
+        "ber_class_2_events": test_ignore_checker(),
+        "ber_class_2_ber": test_ignore_checker(),
+        "ber_class_2_rber": test_ignore_checker(),
+        "ber_erased_events": test_ignore_checker(),
+        "ber_erased_fer": test_ignore_checker(),
+        "ber_crc_errors": test_ignore_checker(),
+        "enable_tch_loopback": test_ignore_checker(),
+        "power_vswr_vga2": test_none_checker(),
+        "power_vswr_dcdc": test_none_checker(),
+        "vswr_vga2": test_none_checker()
+    }
 
 
 class TestResults:
@@ -322,12 +302,16 @@ class BtsControlBase:
                "umtrx_property_tree.py",
                "umtrx_ctrl.py", "umtrx_lms.py"]
 
-    def __init__(self, tmpdir='/tmp/bts-test'):
+    locals = ["test_umtrx_reset.py", "test_umtrx_gps_time.py"]
+
+    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
         ''' Connect to a BTS and prepare it for testing '''
         # Copy helper scripts to the BTS
         self.tmpdir = tmpdir
         self._exec_stdout('mkdir -p '+self.tmpdir)
         self._copy_file_list('helper/', self.helpers, self.tmpdir)
+        self._copy_file_list('./', self.locals, self.tmpdir)
+        self.sudo = sudopkg
 
     def _tee(self, stream, filename):
         ''' Write lines from the stream to the file and return the lines '''
@@ -346,7 +330,7 @@ class BtsControlBase:
         print "Setting primary TRX to TRX%d" % num
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
-            'sudo python osmo-trx-primary-trx.py %d' % num)
+            '%s python osmo-trx-primary-trx.py %d' % (self.sudo, num))
 
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
@@ -363,12 +347,28 @@ class BtsControlBase:
             'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
             % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
 
+    def umtrx_get_gps_time(self):
+        '''Obtain time diff GPS vs system'''
+        return self._exec_stdout_stderr(
+            'cd ' + self.tmpdir + '; ' +
+            '%s python3 test_umtrx_gps_time.py' % (self.sudo))
+
+    def bts_get_hw_config(self, param):
+        ''' Get hardware configuration parameter '''
+        return self._exec_stdout_stderr(
+             'cat /etc/osmocom/hardware.conf | grep %s | cut -d= -f2' % param)
+
     def bts_set_maxdly(self, val):
         ''' Set BTS TRX0 max timing advance '''
         print("BTS: setting max delay to %d." % val)
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
+
+    def umtrx_reset_test(self):
+        return self._exec_stdout_stderr(
+            'cd ' + self.tmpdir + '; ' +
+            '%s python3 test_umtrx_reset.py' % self.sudo)
 
     def umtrx_set_dcdc_r(self, val):
         ''' Set UmTRX DCDC control register value '''
@@ -399,21 +399,21 @@ class BtsControlBase:
         ''' Start a runit controlled service '''
         print("Starting '%s' service." % service)
         return self._exec_stdout_stderr(
-            'sudo sv start %s' % service)
+            '%s sv start %s' % (self.sudo, service))
         # TODO: Check result
 
     def stop_runit_service(self, service):
         ''' Stop a runit controlled service '''
         print("Stopping '%s' service." % service)
         return self._exec_stdout_stderr(
-            'sudo sv stop %s' % service)
+            '%s sv stop %s' % (self.sudo, service))
         # TODO: Check result
 
     def restart_runit_service(self, service):
         ''' Restart a runit controlled service '''
         print("Restarting '%s' service." % service)
         return self._exec_stdout_stderr(
-            'sudo sv restart %s' % service)
+            '%s sv restart %s' % (self.sudo, service))
         # TODO: Check result
 
     def osmo_trx_start(self):
@@ -444,11 +444,14 @@ class BtsControlBase:
                      GSM1800 (same as DCS1800), GSM1900 (same as PCS1900)
             All UHD apps should be stopped at the time of executing. '''
         stdin, stdout, stderr = self._exec(
-            'sudo umtrx_auto_calibration %s' % preset)
+            '%s umtrx_auto_calibration %s' % (self.sudo, preset))
         # TODO: Check result
         lines = self._tee(stdout, filename_stdout)
         self._tee(stderr, filename_stderr)
         line_re = re.compile(r'Calibration type .* side . from .* to .*: ([A-Z]+)')
+        if len(lines) == 0:
+            return False
+
         for l in lines:
             match = line_re.match(l)
             if match is not None:
@@ -487,9 +490,9 @@ class BtsControlSsh(BtsControlBase):
 
 class BtsControlLocalManual(BtsControlBase):
 
-    def __init__(self, tmpdir='/tmp/bts-test'):
+    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
         ''' Connect to a BTS and prepare it for testing '''
-        BtsControlBase.__init__(self, tmpdir)
+        BtsControlBase.__init__(self, tmpdir, sudopkg)
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         for f in flie_list:
@@ -528,9 +531,9 @@ class BtsControlLocalManual(BtsControlBase):
 
 class BtsControlLocal(BtsControlBase):
 
-    def __init__(self, tmpdir='/tmp/bts-test'):
+    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
         ''' Connect to a BTS and prepare it for testing '''
-        BtsControlBase.__init__(self, tmpdir)
+        BtsControlBase.__init__(self, tmpdir, sudopkg)
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         for f in flie_list:
@@ -558,18 +561,40 @@ class BtsControlLocal(BtsControlBase):
         return p.stdout.readlines()
 
     def osmo_trx_start(self):
-        return self._exec_stdout_stderr("sudo sv start osmo-trx")
+        return self._exec_stdout_stderr("%s sv start osmo-trx" % self.sudo)
 
     def osmo_trx_stop(self):
-        return self._exec_stdout_stderr("sudo sv stop osmo-trx")
+        return self._exec_stdout_stderr("%s sv stop osmo-trx" % self.sudo)
 
     def osmo_trx_restart(self):
-        return self._exec_stdout_stderr("sudo sv restart osmo-trx")
+        return self._exec_stdout_stderr("%s sv restart osmo-trx" % self.sudo)
 
 
 ###############################
 #   non-CMD57 based tests
 ###############################
+
+@test_checker_decorator("bts_hw_model")
+def bts_hw_model(bts):
+    return bts.bts_get_hw_config('HW_MODEL')[0].strip('\n')
+
+@test_checker_decorator("bts_hw_band")
+def bts_hw_band(bts):
+    return bts.bts_get_hw_config('BAND')[0].strip('\n')
+
+@test_checker_decorator("bts_umtrx_ver")
+def bts_umtrx_ver(bts):
+    return bts.bts_get_hw_config('UMTRX_VER')[0].strip('\n')
+
+@test_checker_decorator("umtrx_reset_test")
+def umtrx_reset_test(bts, tr):
+    lns = bts.umtrx_reset_test()
+    return lns[-1].find('SUCCESS') != -1
+
+@test_checker_decorator("umtrx_gps_time")
+def umtrx_gps_time(bts, tr):
+    lns = bts.umtrx_get_gps_time()
+    return lns[-1].find('SUCCESS') != -1
 
 
 @test_checker_decorator("bts_uname")
@@ -968,7 +993,7 @@ def test_enable_tch_loopback(cmd, bts):
 ###############################
 
 
-def run_bts_tests():
+def run_bts_tests(tr):
     print("Starting BTS tests.")
 
     # Stop osmo-trx to unlock UmTRX
@@ -978,12 +1003,20 @@ def run_bts_tests():
     bts_read_uname(bts)
     bts_read_umtrx_serial(bts)
 
+    umtrx_gps_time(bts, tr)
+    bts_hw_model(bts)
+    bts_hw_band(bts)
+    bts_umtrx_ver(bts)
+
     # Generate Test ID to be used in file names
     gen_test_id()
 
     # Autocalibrate UmTRX
     test_id = str(tr.get_test_result("test_id", "system")[2])
     bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
+
+    # UmTRX Reset Test
+    umtrx_reset_test(bts, tr)
 
     # Start osmo-trx again
     bts.osmo_trx_start()
