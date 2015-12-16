@@ -292,24 +292,43 @@ class TestResults:
 #             if tr.get_test_result(dep) != TEST_OK:
 #                 return False
 #         return True
+EXCLUDE_TESTS=[]
+ABORT_EXECUTION = False
 
+def def_func_visitor(func, testname, *args, **kwargs):
+    global ABORT_EXECUTION
+    if testname in EXCLUDE_TESTS:
+        res = TEST_NA
+        tr.print_result(time.time(), testname, res, None)
+        return res
+    if ABORT_EXECUTION:
+        res = TEST_ABORTED
+        tr.set_test_result(testname, res)
+        return res
+
+    try:
+        val = func(*args, **kwargs)
+        res = tr.check_test_result(testname, val)
+    except KeyboardInterrupt:
+        res = TEST_ABORTED
+        tr.set_test_result(testname, res)
+        ABORT_EXECUTION=True
+    except:
+        if _tests_debug:
+            traceback.print_exc()
+        res = TEST_ABORTED
+        tr.set_test_result(testname, res)
+    return res
+
+DECORATOR_DEFAULT = def_func_visitor
 
 def test_checker_decorator(testname):
     def real_decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            try:
-                val = func(*args, **kwargs)
-                res = tr.check_test_result(testname, val)
-            except:
-                if _tests_debug:
-                    traceback.print_exc()
-                res = TEST_ABORTED
-                tr.set_test_result(testname, res)
-            return res
+            return DECORATOR_DEFAULT(func, testname, *args, **kwargs)
         return wrapper
     return real_decorator
-
 
 ###############################
 #   BTS control functions
@@ -707,6 +726,8 @@ def test_burst_power_peak_wait(cmd, timeout):
     t = time.time()
     while res != TEST_OK and time.time()-t < timeout:
         res = test_burst_power_peak(cmd)
+        if res == TEST_ABORTED:
+            return res
     res = test_burst_power_peak(cmd)
     return res
 
@@ -1161,6 +1182,10 @@ def parse_args():
                         help="Device under test for the CMD57 control "
                              "(default: UmSITE-TM10-900)"
                              " {UmSITE-TM3-900 UmTRX UmTRX-2.2}")
+    parser.add_argument("-x", "--exclude", type=str,
+                        help="Exclude some tests")
+    parser.add_argument("-L", "--list", type=str,
+                        help="Display all available tests and exit")
     parser.add_argument("-c", "--channels", type=str, default='1,2',
                         help="Test only this channels")
     return parser.parse_args()
@@ -1172,6 +1197,10 @@ def parse_args():
 
 
 def ui_ask(text):
+    if ABORT_EXECUTION:
+         print ("Abort ui '%s'" % text)
+         return None
+
     # Note: this flush code works under *nix OS only
     while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
         os.read(sys.stdin.fileno(), 4096)
@@ -1198,6 +1227,13 @@ if __name__ == '__main__':
     args = parse_args()
     dut=args.dut
 
+    if args.exclude is not None:
+        EXCLUDE_TESTS = args.exclude.split(',')
+        print ("Exclude list: %s" % str(EXCLUDE_TESTS))
+
+    if args.list:
+        for i,v in enumerate(TEST_NAMES):
+            print("%20s: %50s" % (i, v))
 
     if dut=="UmSITE-TM3-900":
         dut_checks = bts_params.UMSITE_TM3_PARAMS
@@ -1288,6 +1324,9 @@ if __name__ == '__main__':
         #
         #   Dump report to a JSON file
         #
+        if ABORT_EXECUTION:
+            print ("Test was aborted, don't save data")
+            sys.exit(1)
 
         test_id = str(tr.get_test_result("test_id", "system")[2])
         f = open("bts-test."+test_id+".json", 'w')
