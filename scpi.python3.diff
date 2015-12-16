@@ -1,0 +1,415 @@
+diff --git a/examples/cmd57-example.py b/examples/cmd57-example.py
+index 26d71bf..a05f84c 100644
+--- a/examples/cmd57-example.py
++++ b/examples/cmd57-example.py
+@@ -19,8 +19,8 @@ if __name__ == '__main__':
+     dev = cmd57.rs232(sys.argv[1], rtscts=True)
+     atexit.register(dev.quit)
+ 
+-    dev.configure_man(ccch_arfcn=100, tch_arfcn=100, tch_ts=2, tsc=7, expected_power=37, tch_tx_power=-50, tch_mode='LOOP', tch_timing=0)
+-    dev.configure_mod(expected_power=37, arfcn=100, tsc=7, decode='STANdard', input_bandwidth='NARRow', trigger_mode='POWer')
++    dev.configure_man(ccch_arfcn=75, tch_arfcn=75, tch_ts=0, tsc=7, expected_power=37, tch_tx_power=-50, tch_mode='LOOP', tch_timing=0)
++    dev.configure_mod(expected_power=37, arfcn=75, tsc=7, decode='STANdard', input_bandwidth='NARRow', trigger_mode='POWer')
+     dev.configure_spectrum_modulation_mask_rel(43) # most strict spectrum mask
+ 
+     dev.print_sys_info()
+diff --git a/scpi/devices/cmd57.py b/scpi/devices/cmd57.py
+index 7c44e41..6ea0a2d 100644
+--- a/scpi/devices/cmd57.py
++++ b/scpi/devices/cmd57.py
+@@ -1029,9 +1029,9 @@ def rs232(port, **kwargs):
+     # Try opening at 2400 baud (default setting) and switch to 9600 baud
+     serial_port = pyserial.Serial(port, 2400, timeout=0, **kwargs)
+     # Clear junk in the serial port buffer
+-    serial_port.write("\n")
++    serial_port.write(b"\n")
+     # Change the baud rate
+-    serial_port.write(":SYSTem:COMMunicate:SERial:BAUD 9600"+"\n")
++    serial_port.write(b":SYSTem:COMMunicate:SERial:BAUD 9600\n")
+     # Wait for the command to be written and close port
+     serial_port.close()
+ 
+@@ -1039,7 +1039,7 @@ def rs232(port, **kwargs):
+     serial_port = pyserial.Serial(port, 9600, timeout=0, **kwargs)
+     transport = serial_transport(serial_port)
+     # Clear serial port
+-    serial_port.write("\n")
++    serial_port.write(b"\n")
+ 
+     return transport
+ 
+diff --git a/scpi/devices/cmd57_console.py b/scpi/devices/cmd57_console.py
+index 06e906f..94634f8 100644
+--- a/scpi/devices/cmd57_console.py
++++ b/scpi/devices/cmd57_console.py
+@@ -17,33 +17,33 @@ class cmd57_console(cmd57.cmd57):
+         super(cmd57_console, self).__init__(transport, *args, **kwargs)
+ 
+     def print_sys_info(self):
+-        print "System version:       %s" % " ".join(self.identify())
+-        print "Installed options:    %s" % " ".join(self.ask_installed_options())
++        print("System version:       %s" % " ".join(self.identify()))
++        print("Installed options:    %s" % " ".join(self.ask_installed_options()))
+ 
+     def print_sys_config(self):
+-        print "RF input/output port: %s" % self.ask_io_used()
++        print("RF input/output port: %s" % self.ask_io_used())
+ 
+     def print_man_config(self):
+-        print "Manual BTS test - Synchronized mode (no signaling)"
+-        print "  CCCH ARFCN:       %s" % format_int(self.ask_bts_ccch_arfcn())
+-        print "  TCH ARFCN:        %s" % format_int(self.ask_bts_tch_arfcn())
+-        print "  TCH timeslot:     %s" % format_int(self.ask_bts_tch_ts())
+-        print "  Expected power:   %s dBm" % format_float(self.ask_bts_expected_power())
+-        print "  Used TS power:    %s dBm" % format_float(self.ask_bts_tch_tx_power())
+-        print "  Mode:             %s" % self.ask_bts_tch_mode()
+-        print "  Timing advance:   %s qbits" % format_int(self.ask_bts_tch_timing())
+-        print "  Input bandwidth:  %s" % self.ask_bts_tch_input_bandwidth()
++        print("Manual BTS test - Synchronized mode (no signaling)")
++        print("  CCCH ARFCN:       %s" % format_int(self.ask_bts_ccch_arfcn()))
++        print("  TCH ARFCN:        %s" % format_int(self.ask_bts_tch_arfcn()))
++        print("  TCH timeslot:     %s" % format_int(self.ask_bts_tch_ts()))
++        print("  Expected power:   %s dBm" % format_float(self.ask_bts_expected_power()))
++        print("  Used TS power:    %s dBm" % format_float(self.ask_bts_tch_tx_power()))
++        print("  Mode:             %s" % self.ask_bts_tch_mode())
++        print("  Timing advance:   %s qbits" % format_int(self.ask_bts_tch_timing()))
++        print("  Input bandwidth:  %s" % self.ask_bts_tch_input_bandwidth())
+ 
+     def print_man_bidl_info(self):
+-        print "Manual BTS test - Synchronized mode (no signaling)"
+-        print "  Peak power:         %s dBm" % format_float(self.ask_peak_power())
++        print("Manual BTS test - Synchronized mode (no signaling)")
++        print("  Peak power:         %s dBm" % format_float(self.ask_peak_power()))
+ 
+     def print_man_bbch_info(self):
+-        print "Manual BTS test - Synchronized mode (no signaling)"
+-        print "  MCC:              %d" % self.ask_bts_mcc()
+-        print "  MNC:              %d" % self.ask_bts_mcc()
+-        print "  BSIC:             %d" % self.ask_bts_bsic()
+-        print "  burst avg power:  %d dBm" % self.ask_burst_power_avg()
++        print("Manual BTS test - Synchronized mode (no signaling)")
++        print("  MCC:              %d" % self.ask_bts_mcc())
++        print("  MNC:              %d" % self.ask_bts_mcc())
++        print("  BSIC:             %d" % self.ask_bts_bsic())
++        print("  burst avg power:  %d dBm" % self.ask_burst_power_avg())
+ 
+     def print_man_bbch_info(self, update=False):
+         if (update):
+@@ -51,19 +51,19 @@ class cmd57_console(cmd57.cmd57):
+         else:
+             freq_err = self.fetch_freq_err()
+         (pk_phase_err_match, avg_phase_err_match, freq_err_match) = self.ask_phase_freq_match()
+-        print "Manual test - Control Channel"
+-        print "  RF channel:           %d" % self.ask_bts_ccch_arfcn()
+-        print "    Frequency error:    %s Hz  (%s)" % (format_int(freq_err), freq_err_match)
+-        print "    Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match)
+-        print "    Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match)
+-        print "  BTS power:            %s dBm" % format_float(self.ask_peak_power())
+-        #TODO: print network information
++        print("Manual test - Control Channel")
++        print("  RF channel:           %d" % self.ask_bts_ccch_arfcn())
++        print("    Frequency error:    %s Hz  (%s)" % (format_int(freq_err), freq_err_match))
++        print("    Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match))
++        print("    Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match))
++        print("  BTS power:            %s dBm" % format_float(self.ask_peak_power()))
++        #TODO: print(network information)
+ 
+     def print_man_btch_info(self, update=False):
+         self.print_mod_info(update)
+ 
+     def print_man_phase_freq_info(self, update=False):
+-        print "TCH Burst Phase/Frequency:"
++        print("TCH Burst Phase/Frequency:")
+         if update:
+             err_arr = self.ask_phase_err_arr()
+             freq_err = self.ask_freq_err()
+@@ -71,11 +71,11 @@ class cmd57_console(cmd57.cmd57):
+             err_arr = self.fetch_phase_err_arr()
+             freq_err = self.fetch_freq_err()
+         (pk_phase_err_match, avg_phase_err_match, freq_err_match) = self.ask_phase_freq_match()
+-        print "  TCH channel:          %d" % self.ask_bts_tch_arfcn()
+-        print "    Frequency error:    %s Hz  (%s)" % (format_int(freq_err), freq_err_match)
+-        print "    Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match)
+-        print "    Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match)
+-        print "  Burst phase error:    ", err_arr
++        print("  TCH channel:          %d" % self.ask_bts_tch_arfcn())
++        print("    Frequency error:    %s Hz  (%s)" % (format_int(freq_err), freq_err_match))
++        print("    Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match))
++        print("    Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match))
++        print("  Burst phase error:    ", err_arr)
+ 
+     def print_man_power(self, update=False):
+         if update:
+@@ -84,101 +84,101 @@ class cmd57_console(cmd57.cmd57):
+         else:
+             avg_power = self.fetch_burst_power_avg()
+             power_arr = self.fetch_burst_power_arr()
+-        print "Burst Power mask measurements"
+-        print "  Peak power:         %s dBm" % format_float(self.ask_peak_power())
+-        print "  Avg. burst power:   %s dBm" % format_float(avg_power)
+-        print "  Power ramp:         %s" % self.ask_power_mask_match()
+-        print "  Power (q-bits):     ", power_arr
++        print("Burst Power mask measurements")
++        print("  Peak power:         %s dBm" % format_float(self.ask_peak_power()))
++        print("  Avg. burst power:   %s dBm" % format_float(avg_power))
++        print("  Power ramp:         %s" % self.ask_power_mask_match())
++        print("  Power (q-bits):     ", power_arr)
+ 
+     def print_man_spectrum_modulation(self, update=False):
+-        print "Spectrum due to Modulation:"
+-        print "  Absolute tolerance mask (dBm):          ", self.ask_spectrum_modulation_tolerance_abs()
+-        print "  Relative tolerance mask (dBc):          ", self.ask_spectrum_modulation_tolerance_rel()
+-        print "  Measurement offsets (kHz):              ", self.fetch_spectrum_modulation_offsets()
++        print("Spectrum due to Modulation:")
++        print("  Absolute tolerance mask (dBm):          ", self.ask_spectrum_modulation_tolerance_abs())
++        print("  Relative tolerance mask (dBc):          ", self.ask_spectrum_modulation_tolerance_rel())
++        print("  Measurement offsets (kHz):              ", self.fetch_spectrum_modulation_offsets())
+         if update:
+             spectrum = self.ask_spectrum_modulation()
+         else:
+             spectrum = self.fetch_spectrum_modulation()
+-        print "  Measured values (dBc):                  ", spectrum
+-        print "  Mask match?                             ", self.ask_spectrum_modulation_match()
++        print("  Measured values (dBc):                  ", spectrum)
++        print("  Mask match?                             ", self.ask_spectrum_modulation_match())
+ 
+     def print_man_spectrum_switching(self, update=False):
+-        print "Spectrum due to Switching:"
+-        print "  Absolute tolerance mask (dBm):          ", self.ask_spectrum_switching_tolerance_abs()
+-        print "  Relative tolerance mask (dBc):          ", self.ask_spectrum_switching_tolerance_rel()
+-        print "  Measurement offsets (kHz):              ", self.fetch_spectrum_switching_offsets()
++        print("Spectrum due to Switching:")
++        print("  Absolute tolerance mask (dBm):          ", self.ask_spectrum_switching_tolerance_abs())
++        print("  Relative tolerance mask (dBc):          ", self.ask_spectrum_switching_tolerance_rel())
++        print("  Measurement offsets (kHz):              ", self.fetch_spectrum_switching_offsets())
+         if update:
+             spectrum = self.ask_spectrum_switching()
+         else:
+             spectrum = self.fetch_spectrum_switching()
+-        print "  Measured values (dBc):                  ", spectrum
+-        print "  Mask match?                             ", self.ask_spectrum_switching_match()
++        print("  Measured values (dBc):                  ", spectrum)
++        print("  Mask match?                             ", self.ask_spectrum_switching_match())
+ 
+     def print_mod_config(self):
+         rf_in_num = self.parse_io_str(self.ask_io_used())[0]
+-        print "Module test - Burst Analysis configuration"
+-        print "  Expected power:     %f dBm" % self.ask_ban_expected_power()
+-        print "  RF Channel:         %d" % self.ask_ban_arfcn()
+-        print "  Training sequence:  %d" % self.ask_ban_tsc()
+-        print "  Decode:             %s" % self.ask_phase_decoding_mode()
++        print("Module test - Burst Analysis configuration")
++        print("  Expected power:     %f dBm" % self.ask_ban_expected_power())
++        print("  RF Channel:         %d" % self.ask_ban_arfcn())
++        print("  Training sequence:  %d" % self.ask_ban_tsc())
++        print("  Decode:             %s" % self.ask_phase_decoding_mode())
+         if rf_in_num == 1:
+-            print "  Peak power bandw:   %s" % self.ask_ban_input_bandwidth()
+-        print "  Trigger mode:       %s" % self.ask_ban_trigger_mode()
+-        print "  Used RF Input:      %d" % rf_in_num
++            print("  Peak power bandw:   %s" % self.ask_ban_input_bandwidth())
++        print("  Trigger mode:       %s" % self.ask_ban_trigger_mode())
++        print("  Used RF Input:      %d" % rf_in_num)
+         if rf_in_num == 1:
+-            print "  Ext atten RF In1:   %f" % self.ask_ext_att_rf_in1()
++            print("  Ext atten RF In1:   %f" % self.ask_ext_att_rf_in1())
+         else:
+-            print "  Ext atten RF In2:   %f" % self.ask_ext_att_rf_in2()
++            print("  Ext atten RF In2:   %f" % self.ask_ext_att_rf_in2())
+ 
+     def print_mod_info(self, update=False):
+         if update:
+             self.ask_burst_power_avg()
+         (pk_phase_err_match, avg_phase_err_match, freq_err_match) = self.ask_phase_freq_match()
+-        print "Module test - Burst Analysis measurements"
+-        print "  Peak power:         %s dBm" % format_float(self.ask_peak_power())
+-        print "  Avg. burst power:   %s dBm" % format_float(self.fetch_burst_power_avg())
+-        print "  Power ramp:         %s" % self.ask_power_mask_match()
+-        print "  Frequency error:    %s Hz  (%s)" % (format_int(self.fetch_freq_err()), freq_err_match)
+-        print "  Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match)
+-        print "  Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match)
++        print("Module test - Burst Analysis measurements")
++        print("  Peak power:         %s dBm" % format_float(self.ask_peak_power()))
++        print("  Avg. burst power:   %s dBm" % format_float(self.fetch_burst_power_avg()))
++        print("  Power ramp:         %s" % self.ask_power_mask_match())
++        print("  Frequency error:    %s Hz  (%s)" % (format_int(self.fetch_freq_err()), freq_err_match))
++        print("  Phase Error (PK):   %s deg (%s)" % (format_float(self.fetch_phase_err_pk()), pk_phase_err_match))
++        print("  Phase Error (AVG):  %s deg (%s)" % (format_float(self.fetch_phase_err_rms()), avg_phase_err_match))
+ 
+     def print_ber_test_settings(self):
+         power_ts_unused = self.ask_ber_unused_ts_power()
+-        print "BER Test %d settings:" % self.ask_ber_test_num()
+-        print "  Used TS power:      %.1f dBm" % self.ask_ber_used_ts_power()
+-        print "  Unused TS power:    %s dB" % ("OFF" if power_ts_unused is None else ("%.1f"%power_ts_unused),)
+-        print "  Frames to send:     %d" % self.ask_ber_frames_num()
+-        print "  Test time:          %.1f s" % self.ask_ber_max_test_time()
+-        print "  Abort condition:    %s" % self.ask_ber_abort_cond()
+-        print "  Hold-off time:      %.1f s" % self.ask_ber_holdoff_time()
+-        print "                Tolerance      Total"
+-        print "  Class Ib         %6d     %6d"    % (self.ask_ber_limit_class_1b(), self.ask_ber_max_class_1b_samples())
+-        print "  Class II         %6d     %6d"    % (self.ask_ber_limit_class_2(), self.ask_ber_max_class_2_samples())
+-        print "  Erased Frames    %6d     %6d"    % (self.ask_ber_limit_erased_frames(), self.ask_ber_max_erased_frames_samples())
++        print("BER Test %d settings:" % self.ask_ber_test_num())
++        print("  Used TS power:      %.1f dBm" % self.ask_ber_used_ts_power())
++        print("  Unused TS power:    %s dB" % ("OFF" if power_ts_unused is None else ("%.1f"%power_ts_unused),))
++        print("  Frames to send:     %d" % self.ask_ber_frames_num())
++        print("  Test time:          %.1f s" % self.ask_ber_max_test_time())
++        print("  Abort condition:    %s" % self.ask_ber_abort_cond())
++        print("  Hold-off time:      %.1f s" % self.ask_ber_holdoff_time())
++        print("                Tolerance      Total")
++        print("  Class Ib         %6d     %6d"    % (self.ask_ber_limit_class_1b(), self.ask_ber_max_class_1b_samples()))
++        print("  Class II         %6d     %6d"    % (self.ask_ber_limit_class_2(), self.ask_ber_max_class_2_samples()))
++        print("  Erased Frames    %6d     %6d"    % (self.ask_ber_limit_erased_frames(), self.ask_ber_max_erased_frames_samples()))
+ 
+     def print_ber_test_result(self, update=False):
+         if update:
+             res = self.read_ber_test_result()
+         else:
+             res = self.fetch_ber_test_result()
+-        print "BER Test result:"
+-        print "  Test result:           %s"    % res
++        print("BER Test result:")
++        print("  Test result:           %s"    % res)
+         if res in ["PASS", "FAIL"]:
+             (ber1b_events, ber1b_ber, ber1b_rber) = (self.fetch_ber_class_1b_events(), self.fetch_ber_class_1b_ber(), self.fetch_ber_class_1b_rber())
+             (ber2_events, ber2_ber, ber2_rber) = (self.fetch_ber_class_2_events(), self.fetch_ber_class_2_ber(), self.fetch_ber_class_2_rber())
+             (fer_events, fer_percent) = (self.fetch_ber_erased_events(), self.fetch_ber_erased_fer())
+             crc_errors = self.fetch_ber_crc_errors()
+-            print "                events    BER       RBER"
+-            print "  Class Ib      %6d  %7.3f%%  %7.3f%%"    % (ber1b_events, ber1b_ber, ber1b_rber)
+-            print "  Class II      %6d  %7.3f%%  %7.3f%%"    % (ber2_events, ber2_ber, ber2_rber)
+-            print "                events    FER"
+-            print "  Erased Frames %6d  %7.3f%%"             % (fer_events, fer_percent)
+-            print "  CRC errors:   %6d"                   % crc_errors
++            print("                events    BER       RBER")
++            print("  Class Ib      %6d  %7.3f%%  %7.3f%%"    % (ber1b_events, ber1b_ber, ber1b_rber))
++            print("  Class II      %6d  %7.3f%%  %7.3f%%"    % (ber2_events, ber2_ber, ber2_rber))
++            print("                events    FER")
++            print("  Erased Frames %6d  %7.3f%%"             % (fer_events, fer_percent))
++            print("  CRC errors:   %6d"                   % crc_errors)
+ 
+ 
+     def print_cur_mode(self):
+-        print "Current test mode:    %s" % self.ask_test_mode()
+-        print "Current device state: %s" % self.ask_dev_state()
++        print("Current test mode:    %s" % self.ask_test_mode())
++        print("Current device state: %s" % self.ask_dev_state())
+ 
+ def rs232(port, **kwargs):
+     return cmd57_console(cmd57.rs232(port, **kwargs))
+diff --git a/scpi/errors/__init__.py b/scpi/errors/__init__.py
+index d0c37ed..9068372 100644
+--- a/scpi/errors/__init__.py
++++ b/scpi/errors/__init__.py
+@@ -1,6 +1,6 @@
+ """SCPI module specific errors"""
+ 
+-from exceptions import RuntimeError
++#from exceptions import RuntimeError
+ 
+ 
+ class TimeoutError(RuntimeError):
+diff --git a/scpi/scpi.py b/scpi/scpi.py
+index 927372d..592edc9 100644
+--- a/scpi/scpi.py
++++ b/scpi/scpi.py
+@@ -2,7 +2,7 @@
+ import time
+ import re
+ 
+-from exceptions import RuntimeError, ValueError
++#from exceptions import RuntimeError, ValueError
+ from .errors import TimeoutError, CommandError
+ import decimal
+ 
+@@ -68,7 +68,7 @@ class scpi(object):
+         try:
+             # PONDER: auto-add ";*WAI" ??
+             self.send_command_unchecked(command, expect_response, force_wait)
+-        except (TimeoutError), e:
++        except TimeoutError as e:
+             re_raise = e
+         finally:
+             self.check_error(command)
+@@ -160,7 +160,7 @@ class scpi(object):
+         re_raise = None
+         try:
+             self.send_command_unchecked(command, True, force_wait)
+-        except (TimeoutError), e:
++        except TimeoutError as e:
+             # This will raise the correct error in case we got a timeout waiting for the input
+             self.check_error(command)
+             # If there was not error, re-raise the timeout
+diff --git a/scpi/transports/baseclass.py b/scpi/transports/baseclass.py
+index f0e10c5..422ac82 100644
+--- a/scpi/transports/baseclass.py
++++ b/scpi/transports/baseclass.py
+@@ -1,10 +1,12 @@
++# -*- coding: utf-8 -*-
++
+ """Baseclass for all the transports, if common methods are needed they will be defined here
+ 
+ All transports must define certain basic methods (check all the raise NotImplementedError)
+ """
+ 
+-from exceptions import NotImplementedError
+-from exceptions import RuntimeError
++#from exceptions import NotImplementedError
++#from exceptions import RuntimeError
+ 
+ 
+ class transports_base(object):
+diff --git a/scpi/transports/rs232.py b/scpi/transports/rs232.py
+index 80be2da..23ff352 100644
+--- a/scpi/transports/rs232.py
++++ b/scpi/transports/rs232.py
+@@ -1,3 +1,5 @@
++# -*- coding: utf-8 -*-
++
+ """Serial port transport layer, uses RTS/CTS for flow-control"""
+ import serial as pyserial
+ import threading
+@@ -6,7 +8,7 @@ import binascii
+ import time
+ import sys
+ import select
+-from baseclass import transports_base
++from .baseclass import transports_base
+ 
+ # basically a wrapper for Serial
+ class transports_rs232(transports_base):
+@@ -48,7 +50,7 @@ class transports_rs232(transports_base):
+                 for method in self._current_states:
+                     self._current_states[method] = getattr(self.serial_port, method)()
+                     if self._current_states[method] != self._previous_states[method]:
+-                        print " *** %s changed to %d *** " % (method, self._current_states[method])
++                        print (" *** %s changed to %d *** " % (method, self._current_states[method]))
+                         self._previous_states[method] = self._current_states[method]
+                 rd, wd, ed  = select.select([ self.serial_port, ], [], [ self.serial_port, ], 5) # Wait up to 5s for new data
+                 if not self.serial_port.inWaiting():
+@@ -68,7 +70,7 @@ class transports_rs232(transports_base):
+                     else:
+                         sys.stdout.write(data)
+                 # Put the data into inpit buffer and check for CRLF
+-                self.input_buffer += data
++                self.input_buffer += data.decode('utf-8')
+                 # Trim prefix NULLs and linebreaks
+                 self.input_buffer = self.input_buffer.lstrip(chr(0x0) + self.line_terminator)
+                 #print "input_buffer=%s" % repr(self.input_buffer)
+@@ -81,8 +83,8 @@ class transports_rs232(transports_base):
+ 
+ #        except (IOError, pyserial.SerialException), e:
+ # something overwrites the module when running I get <type 'exceptions.AttributeError'>: 'NoneType' object has no attribute 'SerialException' if port fails...
+-        except (IOError), e:
+-            print "Got exception %s" % e
++        except IOError as e:
++            print ("Got exception %s" % e)
+             self.serial_alive = False
+             # It seems we cannot really call this from here, how to detect the problem in main thread ??
+             #self.launcher_instance.unload_device(self.object_name)
+@@ -114,4 +116,4 @@ class transports_rs232(transports_base):
+                 # Yield while waiting for CTS
+                 time.sleep(0)
+         send_str = command + self.line_terminator
+-        self.serial_port.write(send_str)
++        self.serial_port.write(send_str.encode('utf-8'))
