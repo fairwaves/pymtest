@@ -513,12 +513,12 @@ class BtsControlBase:
 
 class BtsControlSsh(BtsControlBase):
 
-    def __init__(self, bts_ip, username='fairwaves', password='fairwaves',
+    def __init__(self, bts_ip, port=22, username='fairwaves', password='fairwaves',
                  tmpdir='/tmp/bts-test'):
         ''' Connect to a BTS and prepare it for testing '''
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(bts_ip, username=username, password=password)
+        self.ssh.connect(bts_ip, port=port, username=username, password=password, timeout=2)
         BtsControlBase.__init__(self, tmpdir)
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
