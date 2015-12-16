@@ -9,12 +9,10 @@ import json
 import os, sys, select  # for stdin flush
 import subprocess
 
-UMSITE_TM3_VGA2_DEF = 22
-UMSITE_TM3_DCDC_DEF = 190
+import bts_params
 
+UMSITE_TM3_VGA2_DEF = 22
 UMTRX_VGA2_DEF = UMSITE_TM3_VGA2_DEF
-UMTRX_DCDC_DEF = UMSITE_TM3_DCDC_DEF
-UMTRX_DCDC_MAX = 255
 
 #######################
 #   Tests definition
@@ -993,7 +991,7 @@ def test_power_vswr_dcdc(cmd, bts, chan, tr, dut):
         tr.output_progress ("Testing power&VSWR vs DCDC control")
         tr.output_progress ("DCDC_R\tPk power\tAvg power\tVPF\tVPR")
         res = []
-        for dcdc in range(UMTRX_DCDC_MAX+1):
+        for dcdc in range(dut["ddc_r_min"], dut["ddc_r_max"]+1):
             bts.umtrx_set_dcdc_r(dcdc)
             power_pk = cmd.ask_peak_power()
             power_avg = cmd.ask_burst_power_avg()
@@ -1001,7 +999,7 @@ def test_power_vswr_dcdc(cmd, bts, chan, tr, dut):
             res.append((dcdc, power_pk, power_avg, vpf, vpr))
             tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         # Sweep from max to min to weed out temperature dependency
-        for dcdc in range(UMTRX_DCDC_MAX, -1, -1):
+        for dcdc in range(dut["ddc_r_max"], dut["ddc_r_min"]-1, -1):
             bts.umtrx_set_dcdc_r(dcdc)
             power_pk = cmd.ask_peak_power()
             power_avg = cmd.ask_burst_power_avg()
@@ -1010,7 +1008,7 @@ def test_power_vswr_dcdc(cmd, bts, chan, tr, dut):
             tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         return res
     finally:
-        bts.umtrx_set_dcdc_r(UMTRX_DCDC_DEF)
+        bts.umtrx_set_dcdc_r(dut["ddc_r_def"])
 
 
 #
