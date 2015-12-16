@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 import paramiko
 from scpi.devices import cmd57_console as cmd57
 import atexit
@@ -7,6 +7,7 @@ import traceback
 import re
 import json
 import os, sys, select  # for stdin flush
+import subprocess
 
 UMSITE_TM3_VGA2_DEF = 22
 UMSITE_TM3_DCDC_DEF = 190
@@ -208,6 +209,15 @@ def init_test_checks(DUT_PARAMS):
         "vswr_vga2": test_none_checker()
     }
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 class TestResults:
 
@@ -228,17 +238,33 @@ class TestResults:
             scope = self.scope
         return self.test_results.setdefault(scope, {})
 
+    RESULT_COLORS = {
+            TEST_NA      : bcolors.OKBLUE,
+            TEST_ABORTED : bcolors.WARNING,
+            TEST_OK      : bcolors.OKGREEN,
+            TEST_FAIL    : bcolors.FAIL
+        }
+
+    def output_progress(self, string):
+        print(string)
+
+    def print_result(self, t, testname, result, value):
+        print ("[%s] %s%50s:  %s%7s%s" % (
+            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
+            bcolors.BOLD,
+            TEST_NAMES.get(testname, testname),
+            TestResults.RESULT_COLORS[result],
+            TEST_RESULT_NAMES[result],
+            bcolors.ENDC), end="")
+        if value is not None:
+            print (" (%s)" % str(value))
+        else:
+            print ("")
+
     def set_test_result(self, testname, result, value=None):
         t = time.time()
         self._get_scope_subtree()[testname] = (t, result, value)
-        print "[%s] %50s:  %7s" % (
-            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
-            TEST_NAMES.get(testname, testname),
-            TEST_RESULT_NAMES[result]),
-        if value is not None:
-            print " (%s)" % str(value)
-        else:
-            print
+        self.print_result(t, testname, result, value)
         return result
 
     def check_test_result(self, testname, value):
@@ -290,7 +316,6 @@ def test_checker_decorator(testname):
 ###############################
 #   BTS control functions
 ###############################
-import subprocess32 as subprocess
 
 class BtsControlBase:
 
@@ -315,8 +340,8 @@ class BtsControlBase:
 
     def _tee(self, stream, filename):
         ''' Write lines from the stream to the file and return the lines '''
-        lines = stream.readlines()
-        f = file(filename, 'w')
+        lines = [  i if type(i) is str else i.decode("utf-8")  for i in stream.readlines() ]
+        f = open(filename, 'w')
         f.writelines(lines)
         f.close()
         return lines
@@ -327,21 +352,21 @@ class BtsControlBase:
 
     def trx_set_primary(self, num):
         ''' Set primary TRX '''
-        print "Setting primary TRX to TRX%d" % num
+        print ("Setting primary TRX to TRX%d" % num)
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             '%s python osmo-trx-primary-trx.py %d' % (self.sudo, num))
 
     def bts_en_loopback(self):
         ''' Enable loopbak in the BTS '''
-        print "Enabling BTS loopback"
+        print ("Enabling BTS loopback")
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-en-loopback.py')
 
     def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
         ''' Set BTS TRX0 slotmask '''
-        print "Setting BTS slotmask"
+        print ("Setting BTS slotmask")
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
@@ -459,6 +484,15 @@ class BtsControlBase:
                     return False
         return True
 
+    def _exec_stdout(self, cmd_str):
+        barrs = self._exec_stdout_b(cmd_str)
+        print (barrs)
+        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
+
+    def _exec_stdout_stderr(self, cmd_str):
+        barrs = self._exec_stdout_stderr_b(cmd_str)
+        print (barrs)
+        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
 
 class BtsControlSsh(BtsControlBase):
 
@@ -506,13 +540,13 @@ class BtsControlLocalManual(BtsControlBase):
                              shell=True)
         return (p.stdin, p.stdout, p.stderr)
 
-    def _exec_stdout(self, cmd_str):
+    def _exec_stdout_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              shell=True)
         return p.stdout.readlines()
 
-    def _exec_stdout_stderr(self, cmd_str):
+    def _exec_stdout_stderr_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
@@ -547,13 +581,13 @@ class BtsControlLocal(BtsControlBase):
                              shell=True)
         return (p.stdin, p.stdout, p.stderr)
 
-    def _exec_stdout(self, cmd_str):
+    def _exec_stdout_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              shell=True)
         return p.stdout.readlines()
 
-    def _exec_stdout_stderr(self, cmd_str):
+    def _exec_stdout_stderr_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
@@ -589,11 +623,13 @@ def bts_umtrx_ver(bts):
 @test_checker_decorator("umtrx_reset_test")
 def umtrx_reset_test(bts, tr):
     lns = bts.umtrx_reset_test()
+    tr.output_progress(str(lns))
     return lns[-1].find('SUCCESS') != -1
 
 @test_checker_decorator("umtrx_gps_time")
 def umtrx_gps_time(bts, tr):
     lns = bts.umtrx_get_gps_time()
+    tr.output_progress(str(lns))
     return lns[-1].find('SUCCESS') != -1
 
 
@@ -904,10 +940,10 @@ def test_ber_crc_errors(cmd):
 
 
 @test_checker_decorator("power_vswr_vga2")
-def test_power_vswr_vga2(cmd, bts, chan):
+def test_power_vswr_vga2(cmd, bts, chan, tr):
     try:
-        print "Testing power&VSWR vs VGA2"
-        print "VGA2\tPk power\tAvg power\tVPF\tVPR"
+        tr.output_progress ("Testing power&VSWR vs VGA2")
+        tr.output_progress ("VGA2\tPk power\tAvg power\tVPF\tVPR")
         res = []
         for vga2 in range(26):
             bts.umtrx_set_tx_vga2(chan, vga2)
@@ -915,7 +951,7 @@ def test_power_vswr_vga2(cmd, bts, chan):
             power_avg = cmd.ask_burst_power_avg()
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((vga2, power_pk, power_avg, vpf, vpr))
-            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         # Sweep from max to min to weed out temperature dependency
         for vga2 in range(25, -1, -1):
             bts.umtrx_set_tx_vga2(chan, vga2)
@@ -923,39 +959,39 @@ def test_power_vswr_vga2(cmd, bts, chan):
             power_avg = cmd.ask_burst_power_avg()
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((vga2, power_pk, power_avg, vpf, vpr))
-            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         return res
     finally:
         bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
 
 
 @test_checker_decorator("vswr_vga2")
-def test_vswr_vga2(bts, chan):
+def test_vswr_vga2(bts, chan, tr):
     try:
-        print "Testing VSWR vs VGA2"
-        print "VGA2\tVPF\tVPR"
+        tr.output_progress ("Testing VSWR vs VGA2")
+        tr.output_progress ("VGA2\tVPF\tVPR")
         res = []
         for vga2 in range(26):
             bts.umtrx_set_tx_vga2(chan, vga2)
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((vga2, vpf, vpr))
-            print("%d\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.2f\t%.2f" % res[-1])
         # Sweep from max to min to weed out temperature dependency
         for vga2 in range(25, -1, -1):
             bts.umtrx_set_tx_vga2(chan, vga2)
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((vga2, vpf, vpr))
-            print("%d\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.2f\t%.2f" % res[-1])
         return res
     finally:
         bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
 
 
 @test_checker_decorator("power_vswr_dcdc")
-def test_power_vswr_dcdc(cmd, bts, chan):
+def test_power_vswr_dcdc(cmd, bts, chan, tr, dut):
     try:
-        print "Testing power&VSWR vs DCDC control"
-        print "DCDC_R\tPk power\tAvg power\tVPF\tVPR"
+        tr.output_progress ("Testing power&VSWR vs DCDC control")
+        tr.output_progress ("DCDC_R\tPk power\tAvg power\tVPF\tVPR")
         res = []
         for dcdc in range(UMTRX_DCDC_MAX+1):
             bts.umtrx_set_dcdc_r(dcdc)
@@ -963,7 +999,7 @@ def test_power_vswr_dcdc(cmd, bts, chan):
             power_avg = cmd.ask_burst_power_avg()
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((dcdc, power_pk, power_avg, vpf, vpr))
-            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         # Sweep from max to min to weed out temperature dependency
         for dcdc in range(UMTRX_DCDC_MAX, -1, -1):
             bts.umtrx_set_dcdc_r(dcdc)
@@ -971,7 +1007,7 @@ def test_power_vswr_dcdc(cmd, bts, chan):
             power_avg = cmd.ask_burst_power_avg()
             (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
             res.append((dcdc, power_pk, power_avg, vpf, vpr))
-            print("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
+            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         return res
     finally:
         bts.umtrx_set_dcdc_r(UMTRX_DCDC_DEF)
@@ -1112,7 +1148,7 @@ def run_ber_tests(dut):
 ###############################
 
 
-def parse_args(devices, default_device):
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("bts_ip", type=str, help="Tested BTS IP address")
     parser.add_argument("-p", "--cmd57-port",
@@ -1122,17 +1158,15 @@ def parse_args(devices, default_device):
     parser.add_argument("-a", "--arfcn",
                         type=int, default=100,
                         help="ARFCN to test")
-    parser.add_argument("-d", "--device",
-                        dest='dut', type=str, default=default_device,
-                        help="Device under test type: %s "
-                             "(default: %s)" % (' '.join(devices), default_device))
+    parser.add_argument("-d", "--dut",
+                        dest='dut', type=str, default='UmSITE-TM10-900',
+                        help="Device under test for the CMD57 control "
+                             "(default: UmSITE-TM10-900)"
+                             " {UmSITE-TM3-900 UmTRX UmTRX-2.2}")
+    parser.add_argument("-c", "--channels", type=str, default='1,2',
+                        help="Test only this channels")
     return parser.parse_args()
 
-def print_args(args):
-    print "BTS IP address:       %s" % args.bts_ip
-    print "CMD57 port:           %s" % args.cmd57_port
-    print "Device under test:    %s" % args.dut
-    print "ARFCN:                %d" % args.arfcn
 
 ##################
 #   UI functions
@@ -1144,111 +1178,120 @@ def ui_ask(text):
     while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
         os.read(sys.stdin.fileno(), 4096)
 
-    print
-    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    val = raw_input(text+" ")
-    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    print
+    print (" ")
+    print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    val = input(text+" ")
+    print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print (" ")
     return val
 
 
 ##################
 #   Main
 ##################
-
-EQUIPMENT_TYPES = ["UmSITE-TM3-900", "UmTRX-2.2", "UmTRX-2.3.1"]
-
-#
-#   Initialization
-#
-
-# Parse command line arguments
-args = parse_args(EQUIPMENT_TYPES, EQUIPMENT_TYPES[0])
-print_args(args)
-
-# Select parameter set for the given DUT
-if args.dut == "UmTRX-2.2":
-    param_set = UMTRX_2_2_PARAMS
-elif  args.dut == "UmTRX-2.3.1":
-    param_set = UMTRX_2_3_1_PARAMS
-elif  args.dut == "UmSITE-TM3-900":
-    param_set = UMSITE_TM3_PARAMS
-else:
-    raise RuntimeError("Unknown device under test type: %s" % args.dut)
-
-# Initialize test results structure
-tr = TestResults(generate_checks(param_set))
-#test_deps = TestDependencies()
-
-#
-#   BTS tests
-#
-
-# Establish ssh connection with the BTS under test
-print("Establishing connection with the BTS.")
-if args.bts_ip == "local":
-    bts = BtsControlLocal()
-elif args.bts_ip == "manual":
-    bts = BtsControlLocalManual()
-else:
-    bts = BtsControlSsh(args.bts_ip, 'fairwaves', 'fairwaves')
-
-# CMD57 has sloppy time synchronization, so burst timing can drift
-# by a few symbols
-bts.bts_set_maxdly(10)
-
-tr.set_test_scope("system")
-run_bts_tests()
-
-#
-#   CMD57 tests
-#
-
-# Establish connection with CMD57 and configure it
-print("Establishing connection with the CMD57.")
-cmd = cmd57_init(args.cmd57_port)
-if args.dut == "UmTRX":
-    cmd.set_io_used('I1O2')
-else:
-    cmd.set_io_used('I1O1')
-
-cmd.switch_to_man_bidl()
-cmd57_configure(cmd, args.arfcn)
-
-try:
-    for trx in [1, 2]:
-        resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
-        if resp != 's':
-            tr.set_test_scope("TRX%d" % trx)
-            print bts.trx_set_primary(trx)
-            bts.osmo_trx_restart()
-            run_cmd57_info()
-            res = run_tch_sync()
-            if res == TEST_OK:
-                run_tx_tests()
-                ber_scope = "TRX%d/BER" % trx
-                tr.set_test_scope(ber_scope)
-                run_ber_tests(args.dut)
-                if tr.get_test_result("ber_test_result")[1] != TEST_OK:
-                    print("Re-running BER test")
-                    tr.clear_test_scope(ber_scope)
-                    run_ber_tests(args.dut)
-                if args.dut == "UmSITE-TM3-900":
-                    tr.set_test_scope("TRX%d/power" % trx)
-                    test_power_vswr_vga2(cmd, bts, trx)
-                    test_power_vswr_dcdc(cmd, bts, trx)
-                    ui_ask("Disconnect cable from the TRX%d." % trx)
-                    test_vswr_vga2(bts, trx)
-finally:
-    # switch back to TRX1
-    bts.trx_set_primary(1)
-    bts.osmo_trx_restart()
+if __name__ == '__main__':
+    EQUIPMENT_TYPES = ["UmTRX", "UmTRX-2.2", "UmSITE-TM3-900", "UmSITE-TM10-900"]
 
     #
-    #   Dump report to a JSON file
+    #   Initialization
     #
 
-    test_id = str(tr.get_test_result("test_id", "system")[2])
-    f = file("bts-test."+test_id+".json", 'w')
-    f.write(tr.json())
-    f.close()
+    # Parse command line arguments
+    args = parse_args()
+    dut=args.dut
+
+
+    if dut=="UmSITE-TM3-900":
+        dut_checks = bts_params.UMSITE_TM3_PARAMS
+    elif dut=="UmSITE-TM10-900":
+        dut_checks = bts_params.UMSITE_TM10_PARAMS
+    elif dut=="UmTRX":
+        dut_checks = bts_params.UMTRX_2_3_1_PARAMS
+    elif dut=="UmTRX-2.2":
+        dut_checks = bts_params.UMTRX_2_2_PARAMS
+    else:
+        die('Unknown device under test!')
+
+    # Initialize test results structure
+    tr = TestResults(init_test_checks(dut_checks))
+    #test_deps = TestDependencies()
+
+    #
+    #   BTS tests
+    #
+
+    # Establish ssh connection with the BTS under test
+    print("Establishing connection with the BTS.")
+    if args.bts_ip == "local":
+        bts = BtsControlLocal()
+    elif args.bts_ip == "manual":
+        bts = BtsControlLocalManual()
+    else:
+        bts = BtsControlSsh(args.bts_ip, 22, 'fairwaves', 'fairwaves')
+
+    # CMD57 has sloppy time synchronization, so burst timing can drift
+    # by a few symbols
+    bts.bts_set_maxdly(10)
+
+    tr.set_test_scope("system")
+    run_bts_tests(tr)
+
+    if len(args.channels) == 0:
+        print("No channel tests were selected")
+        bts.osmo_trx_restart()
+        sys.exit(0)
+
+    #
+    #   CMD57 tests
+    #
+
+    # Establish connection with CMD57 and configure it
+    print("Establishing connection with the CMD57.")
+    cmd = cmd57_init(args.cmd57_port)
+    if dut.startswith("UmTRX"):
+        cmd.set_io_used('I1O2')
+    else:
+        cmd.set_io_used('I1O1')
+
+    cmd.switch_to_man_bidl()
+    cmd57_configure(cmd, args.arfcn)
+
+    try:
+        channels = args.channels.split(',')
+        trxes = [ int(i) for i in channels ]
+        for trx in trxes:
+            resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
+            if resp != 's':
+                tr.set_test_scope("TRX%d" % trx)
+                tr.output_progress(bts.trx_set_primary(trx))
+                bts.osmo_trx_restart()
+                run_cmd57_info()
+                res = run_tch_sync()
+                if res == TEST_OK:
+                    run_tx_tests()
+                    ber_scope = "TRX%d/BER" % trx
+                    tr.set_test_scope(ber_scope)
+                    run_ber_tests(dut)
+                    if tr.get_test_result("ber_test_result")[1] != TEST_OK:
+                        tr.output_progress("Re-running BER test")
+                        tr.clear_test_scope(ber_scope)
+                        run_ber_tests(dut)
+                    if not dut.startswith("UmTRX"):
+                        tr.set_test_scope("TRX%d/power" % trx)
+                        test_power_vswr_vga2(cmd, bts, trx, tr)
+                        test_power_vswr_dcdc(cmd, bts, trx, tr, dut_checks)
+                        ui_ask("Disconnect cable from the TRX%d." % trx)
+                        test_vswr_vga2(bts, trx, tr)
+    finally:
+        # switch back to TRX1
+        bts.trx_set_primary(1)
+        bts.osmo_trx_restart()
+
+        #
+        #   Dump report to a JSON file
+        #
+
+        test_id = str(tr.get_test_result("test_id", "system")[2])
+        f = open("bts-test."+test_id+".json", 'w')
+        f.write(tr.json())
+        f.close()
