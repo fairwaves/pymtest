@@ -204,9 +204,12 @@ class MainWindowImpl(QMainWindow, main_form):
             self.txConsole.appendPlainText("Set configuration Input 1; Output 1")
             cmd.set_io_used('I1O1')
 
+        arfcn=int(self.spArfcn.value())
+        bts_test.set_band_using_arfcn(cmd, arfcn)
+
         QApplication.processEvents()
         cmd.switch_to_man_bidl()
-        bts_test.cmd57_configure(cmd, int(self.spArfcn.value()))
+        bts_test.cmd57_configure(cmd, arfcn)
 
         QApplication.processEvents()
 

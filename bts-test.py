@@ -694,6 +694,7 @@ def cmd57_configure(cmd, arfcn):
                       expected_power=37, tch_tx_power=-60,
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
+    print ("ARFCN=%d NET=%s" % (cmd.ask_bts_ccch_arfcn(), cmd.ask_network_type()))
 
 ###############################
 #   CMD57 based tests
@@ -1213,6 +1214,12 @@ def ui_ask(text):
     return val
 
 
+def set_band_using_arfcn(cmd, arfcn):
+    if arfcn > 511 and arfcn < 886:
+        cmd.switch_to_idle()
+        cmd.set_network_type("DCS1800")
+
+
 ##################
 #   Main
 ##################
@@ -1286,6 +1293,8 @@ if __name__ == '__main__':
         cmd.set_io_used('I1O2')
     else:
         cmd.set_io_used('I1O1')
+
+    set_band_using_arfcn(cmd, args.arfcn)
 
     cmd.switch_to_man_bidl()
     cmd57_configure(cmd, args.arfcn)
