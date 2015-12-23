@@ -266,7 +266,7 @@ class MainWindowImpl(QMainWindow, main_form):
             #   Dump report to a JSON file
             #
             test_id = str(self.tr.get_test_result("test_id", "system")[2])
-            f = open("bts-test."+test_id+".json", 'w')
+            f = open("out/bts-test."+test_id+".json", 'w')
             f.write(self.tr.json())
             f.close()
 

@@ -1069,7 +1069,7 @@ def run_bts_tests(tr):
 
     # Autocalibrate UmTRX
     test_id = str(tr.get_test_result("test_id", "system")[2])
-    bts_umtrx_autocalibrate(bts, "GSM900", "calibration."+test_id+".log", "calibration.err."+test_id+".log")
+    bts_umtrx_autocalibrate(bts, "GSM900", "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # UmTRX Reset Test
     umtrx_reset_test(bts, tr)
@@ -1338,6 +1338,6 @@ if __name__ == '__main__':
             sys.exit(1)
 
         test_id = str(tr.get_test_result("test_id", "system")[2])
-        f = open("bts-test."+test_id+".json", 'w')
+        f = open("out/bts-test."+test_id+".json", 'w')
         f.write(tr.json())
         f.close()
