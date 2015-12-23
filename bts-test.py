@@ -641,13 +641,13 @@ def bts_umtrx_ver(bts):
 def umtrx_reset_test(bts, tr):
     lns = bts.umtrx_reset_test()
     tr.output_progress(str(lns))
-    return lns[-1].find('SUCCESS') != -1
+    return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
 
 @test_checker_decorator("umtrx_gps_time")
 def umtrx_gps_time(bts, tr):
     lns = bts.umtrx_get_gps_time()
     tr.output_progress(str(lns))
-    return lns[-1].find('SUCCESS') != -1
+    return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
 
 
 @test_checker_decorator("bts_uname")
