@@ -34,9 +34,9 @@ UMSITE_TM3_PARAMS = {
 
 UMTRX_2_3_1_PARAMS = {
     "hw_model": "UmTRX",
-    "burst_power_peak_min": 19,  # dBm
+    "burst_power_peak_min": 5,  # dBm
     "burst_power_peak_max": 24,  # dBm
-    "burst_power_avg_min": 19,  # dBm
+    "burst_power_avg_min": 5,  # dBm
     "burst_power_avg_max": 24,  # dBm
     "freq_error": 50,  # Hz
     "phase_err_pk_min": -10.0,  # deg
