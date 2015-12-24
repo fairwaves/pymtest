@@ -1049,7 +1049,7 @@ def test_enable_tch_loopback(cmd, bts):
 ###############################
 
 
-def run_bts_tests(tr):
+def run_bts_tests(tr, band):
     print("Starting BTS tests.")
 
     # Stop osmo-trx to unlock UmTRX
@@ -1069,7 +1069,7 @@ def run_bts_tests(tr):
 
     # Autocalibrate UmTRX
     test_id = str(tr.get_test_result("test_id", "system")[2])
-    bts_umtrx_autocalibrate(bts, "GSM900", "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
+    bts_umtrx_autocalibrate(bts, band, "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
 
     # UmTRX Reset Test
     umtrx_reset_test(bts, tr)
@@ -1214,10 +1214,25 @@ def ui_ask(text):
     return val
 
 
-def set_band_using_arfcn(cmd, arfcn):
+def get_band(arfcn):
     if arfcn > 511 and arfcn < 886:
+        return "DCS1800"
+    elif (arfcn > 974 and arfcn < 1024) or arfcn == 0:
+        return "EGSM900"
+    elif arfcn > 0 and arfcn < 125:
+        return "GSM900"
+    return None
+
+def set_band_using_arfcn(cmd, arfcn):
+    bstr = get_band(arfcn)
+    if bstr == "DCS1800":
         cmd.switch_to_idle()
         cmd.set_network_type("DCS1800")
+    elif bstr == "EGSM900" or bstr == "GSM900":
+        cmd.switch_to_idle()
+        cmd.set_network_type("GSM900")
+    else:
+        print ("This band isn't supported by CMD57")
 
 
 ##################
@@ -1275,7 +1290,7 @@ if __name__ == '__main__':
     bts.bts_set_maxdly(10)
 
     tr.set_test_scope("system")
-    run_bts_tests(tr)
+    run_bts_tests(tr, get_band(args.arfcn))
 
     if len(args.channels) == 0:
         print("No channel tests were selected")
