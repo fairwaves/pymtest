@@ -183,12 +183,14 @@ class MainWindowImpl(QMainWindow, main_form):
         self.bts.bts_set_maxdly(10)
 
         self.tr.set_test_scope("system")
+        #bts_test.get_band(args.arfcn)run_bts_tests(tr, get_band(args.arfcn))
 
         QApplication.processEvents()
 
+        arfcn=int(self.spArfcn.value())
         bts_test.tr = self.tr
         bts_test.bts = self.bts
-        bts_test.run_bts_tests(self.tr)
+        bts_test.run_bts_tests(self.tr, bts_test.get_band(arfcn))
         QApplication.processEvents()
 
         #
@@ -204,7 +206,6 @@ class MainWindowImpl(QMainWindow, main_form):
             self.txConsole.appendPlainText("Set configuration Input 1; Output 1")
             cmd.set_io_used('I1O1')
 
-        arfcn=int(self.spArfcn.value())
         bts_test.set_band_using_arfcn(cmd, arfcn)
 
         QApplication.processEvents()
@@ -287,17 +288,35 @@ class MainWindowImpl(QMainWindow, main_form):
         self.on_stop()
         return False
 
-    def on_test_result(self, t, testname, result, value):
+    def on_test_result(self, t, testname, result, value, old_result, old_value, delta):
+        def get_html_color_tags(color):
+            return ('<font color="%s">' % color, '</font>')
+
         html_maps = {
-            bts_test.TEST_NA      : "<font color=\"blue\"   >    N/A</font>",
-            bts_test.TEST_ABORTED : "<font color=\"magenta\">ABORTED</font>",
-            bts_test.TEST_OK      : "<font color=\"green\"  >     OK</font>",
-            bts_test.TEST_FAIL    : "<font color=\"red\"    >   FAIL</font>"
+            bts_test.TEST_NA      : "%s    N/A%s" % get_html_color_tags("blue"),
+            bts_test.TEST_ABORTED : "%sABORTED%s" % get_html_color_tags("magenta"),
+            bts_test.TEST_OK      : "%s     OK%s" % get_html_color_tags("green"),
+            bts_test.TEST_FAIL    : "%s   FAIL%s" % get_html_color_tags("red")
         }
-        self.txConsole.appendHtml("<pre>[%s] <b>%50s</b>:  %s %s</pre>" % (
+        if old_result == result or old_result is None:
+            tcolot = ("","")
+        elif old_result != bts_test.TEST_OK and result == bts_test.TEST_OK:
+            tcolot = get_html_color_tags("green")
+        elif old_result == bts_test.TEST_OK and result != bts_test.TEST_OK:
+            tcolot = get_html_color_tags("red")
+        else:
+            tcolot = get_html_color_tags("orange")
+
+        sdelta = " [%+f]" % delta if delta is not None else ""
+        was=" (%7s)%s" % (html_maps[old_result], sdelta) if old_result is not None else ""
+
+        self.txConsole.appendHtml("<pre>[%s] %s<b>%50s</b>%s:  %s %s %s</pre>" % (
             self.get_ts(t),
+            tcolot[0],
             bts_test.TEST_NAMES[testname],
+            tcolot[1],
             html_maps[result],
+            was,
             "" if value is None else str(value)))
 
     def get_ts(self, t = None):
@@ -316,8 +335,8 @@ class MyTestResults(bts_test.TestResults):
         self.proxyfn = proxyfn
         self.output_progressfn = output_progressfn
 
-    def print_result(self, t, testname, result, value):
-        self.proxyfn(t, testname, result, value)
+    def print_result(self, t, testname, result, value, old_result, old_value, delta):
+        self.proxyfn(t, testname, result, value, old_result, old_value, delta)
 
     def output_progress(self, string):
         self.output_progressfn(string)

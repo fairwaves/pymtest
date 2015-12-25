@@ -8,6 +8,7 @@ import re
 import json
 import os, sys, select  # for stdin flush
 import subprocess
+from abc import ABCMeta, abstractmethod
 
 import bts_params
 
@@ -217,7 +218,14 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-class TestResults:
+class TestResults(metaclass=ABCMeta):
+    @abstractmethod
+    def output_progress(self, string):
+        pass
+
+    @abstractmethod
+    def print_result(self, t, testname, result, value, old_result, old_value, delta):
+        pass
 
     def __init__(self, checks):
         self.test_results = {}
@@ -244,6 +252,12 @@ class TestResults:
         self.output_progress('Loading previous data from %s' % best_file)
         with open("out/" + best_file, 'rt', encoding="utf-8") as content:
             self.prev_test_results = json.loads(content.read())
+            for scopename in self.prev_test_results:
+                curr_scope = self._get_scope_subtree(scopename)
+                for testname in self.prev_test_results[scopename]:
+                    if testname not in curr_scope:
+                        curr_scope[testname] = self.prev_test_results[scopename][testname]
+
 
     def set_test_scope(self, scope):
         self.scope = scope
@@ -257,48 +271,15 @@ class TestResults:
             scope = self.scope
         return self.test_results.setdefault(scope, {})
 
-    RESULT_COLORS = {
-            TEST_NA      : bcolors.OKBLUE,
-            TEST_ABORTED : bcolors.WARNING,
-            TEST_OK      : bcolors.OKGREEN,
-            TEST_FAIL    : bcolors.FAIL
-        }
-
-    def output_progress(self, string):
-        print(string)
-
 
     def skip_test(self, testname, skip_result=TEST_NA):
         t = time.time()
+        delta = None
         old_t, old_result, old_value = self._get_old(testname)
         if old_t is not None:
             self._get_scope_subtree()[testname] = (old_t, old_result, old_value)
-        self.print_result(t, testname, skip_result, None, old_result, old_value)
+        self.print_result(t, testname, skip_result, None, old_result, old_value, delta)
 
-
-    def print_result(self, t, testname, result, value, old_result=None, old_value=None):
-        was=" (%7s)" % TEST_RESULT_NAMES[old_result] if old_result is not None else ""
-        if old_result == result or old_result is None:
-            tcolot = bcolors.BOLD
-        elif old_result != TEST_OK and result == TEST_OK:
-            tcolot = bcolors.OKGREEN
-        elif old_result == TEST_OK and result != TEST_OK:
-            tcolot = bcolors.FAIL
-        else:
-            tcolot = bcolors.WARNING
-
-        print ("[%s] %s%50s:  %s%7s%s%s" % (
-            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
-            tcolot,
-            TEST_NAMES.get(testname, testname),
-            TestResults.RESULT_COLORS[result],
-            TEST_RESULT_NAMES[result],
-            bcolors.ENDC,
-            was), end="")
-        if value is not None:
-            print (" (%s)" % str(value))
-        else:
-            print ("")
 
     def _get_old(self, testname):
         if (len(self.prev_test_results) == 0 or
@@ -309,9 +290,16 @@ class TestResults:
 
     def set_test_result(self, testname, result, value=None):
         t = time.time()
+        delta = None
         old_t, old_result, old_value = self._get_old(testname)
+        try:
+            fprev = float(old_value)
+            fnew = float(value)
+            delta = fnew - fprev
+        except:
+            pass
         self._get_scope_subtree()[testname] = (t, result, value)
-        self.print_result(t, testname, result, value, old_result, old_value)
+        self.print_result(t, testname, result, value, old_result, old_value, delta)
 
         return result
 
@@ -1250,6 +1238,45 @@ def parse_args():
 #   UI functions
 ##################
 
+class ConsoleTestResults(TestResults):
+    RESULT_COLORS = {
+            TEST_NA      : bcolors.OKBLUE,
+            TEST_ABORTED : bcolors.WARNING,
+            TEST_OK      : bcolors.OKGREEN,
+            TEST_FAIL    : bcolors.FAIL
+        }
+
+    def __init__(self, checks):
+        super().__init__(checks)
+
+    def output_progress(self, string):
+            print(string)
+
+    def print_result(self, t, testname, result, value, old_result, old_value, delta):
+        sdelta = " [%+f]" % delta if delta is not None else ""
+        was=" (%7s)%s" % (TEST_RESULT_NAMES[old_result], sdelta) if old_result is not None else ""
+        if old_result == result or old_result is None:
+            tcolot = bcolors.BOLD
+        elif old_result != TEST_OK and result == TEST_OK:
+            tcolot = bcolors.OKGREEN
+        elif old_result == TEST_OK and result != TEST_OK:
+            tcolot = bcolors.FAIL
+        else:
+            tcolot = bcolors.WARNING
+
+        print ("[%s] %s%50s:  %s%7s%s%s" % (
+            time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
+            tcolot,
+            TEST_NAMES.get(testname, testname),
+            ConsoleTestResults.RESULT_COLORS[result],
+            TEST_RESULT_NAMES[result],
+            bcolors.ENDC,
+            was), end="")
+        if value is not None:
+            print (" (%s)" % str(value))
+        else:
+            print ("")
+
 
 def ui_ask(text):
     if ABORT_EXECUTION:
@@ -1323,7 +1350,7 @@ if __name__ == '__main__':
         die('Unknown device under test!')
 
     # Initialize test results structure
-    tr = TestResults(init_test_checks(dut_checks))
+    tr = ConsoleTestResults(init_test_checks(dut_checks))
     #test_deps = TestDependencies()
 
     #
