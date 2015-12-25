@@ -16,6 +16,16 @@ import serial
 
 main_form, base_class = loadUiType('mainwindow.ui')
 
+def get_html_color_tags(color):
+    return ('<font color="%s">' % color, '</font>')
+
+HTML_RESULT_MAPS = {
+    bts_test.TEST_NA      : "%s    N/A%s" % get_html_color_tags("blue"),
+    bts_test.TEST_ABORTED : "%sABORTED%s" % get_html_color_tags("magenta"),
+    bts_test.TEST_OK      : "%s     OK%s" % get_html_color_tags("green"),
+    bts_test.TEST_FAIL    : "%s   FAIL%s" % get_html_color_tags("red")
+}
+
 class MainWindowImpl(QMainWindow, main_form):
     def load_tests(self):
         for i in bts_test.TEST_NAMES:
@@ -263,6 +273,19 @@ class MainWindowImpl(QMainWindow, main_form):
             self.bts.trx_set_primary(1)
             self.bts.osmo_trx_restart()
             QApplication.processEvents()
+
+            sm = self.tr.summary()
+            for res in sm:
+                self.txConsole.appendHtml("<pre>%s: %2d</pre>" % (HTML_RESULT_MAPS[res], sm[res]))
+
+            failed = sm.setdefault(bts_test.TEST_NA, 0) + sm.setdefault(bts_test.TEST_ABORTED, 0) + sm.setdefault(bts_test.TEST_FAIL, 0)
+            if failed > 0:
+                self.txConsole.appendHtml("<br>%s<h1>WARNING! NOT ALL TEST PASSED!</h1>%s<br>" % get_html_color_tags("red"))
+                if self.started:
+                    self.test_ok = False
+                else:
+                    return #Don't wirte JSON in case of abort
+
             #
             #   Dump report to a JSON file
             #
@@ -289,15 +312,6 @@ class MainWindowImpl(QMainWindow, main_form):
         return False
 
     def on_test_result(self, t, testname, result, value, old_result, old_value, delta):
-        def get_html_color_tags(color):
-            return ('<font color="%s">' % color, '</font>')
-
-        html_maps = {
-            bts_test.TEST_NA      : "%s    N/A%s" % get_html_color_tags("blue"),
-            bts_test.TEST_ABORTED : "%sABORTED%s" % get_html_color_tags("magenta"),
-            bts_test.TEST_OK      : "%s     OK%s" % get_html_color_tags("green"),
-            bts_test.TEST_FAIL    : "%s   FAIL%s" % get_html_color_tags("red")
-        }
         if old_result == result or old_result is None:
             tcolot = ("","")
         elif old_result != bts_test.TEST_OK and result == bts_test.TEST_OK:
@@ -308,14 +322,14 @@ class MainWindowImpl(QMainWindow, main_form):
             tcolot = get_html_color_tags("orange")
 
         sdelta = " [%+f]" % delta if delta is not None else ""
-        was=" (%7s)%s" % (html_maps[old_result], sdelta) if old_result is not None else ""
+        was=" (%7s)%s" % (HTML_RESULT_MAPS[old_result], sdelta) if old_result is not None else ""
 
         self.txConsole.appendHtml("<pre>[%s] %s<b>%50s</b>%s:  %s %s %s</pre>" % (
             self.get_ts(t),
             tcolot[0],
             bts_test.TEST_NAMES[testname],
             tcolot[1],
-            html_maps[result],
+            HTML_RESULT_MAPS[result],
             was,
             "" if value is None else str(value)))
 

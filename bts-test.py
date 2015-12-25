@@ -314,6 +314,15 @@ class TestResults(metaclass=ABCMeta):
         return json.dumps(self.test_results,
                           indent=4, separators=(',', ': '))
 
+    def summary(self):
+        stat={}
+        for scopename in self.test_results:
+            for testname in self.test_results[scopename].keys():
+                tres = self.test_results[scopename][testname]
+                if tres is not None:
+                    cnt = stat.setdefault(tres[1], 0)
+                    stat[tres[1]] = cnt + 1
+        return stat
 
 # class TestDependencies:
 
@@ -1437,6 +1446,17 @@ if __name__ == '__main__':
         bts.trx_set_primary(1)
         bts.osmo_trx_restart()
 
+        sm = tr.summary()
+        for res in sm:
+            print("%s%8s%s: %2d" % (ConsoleTestResults.RESULT_COLORS[res],
+                                    TEST_RESULT_NAMES[res],
+                                    bcolors.ENDC,
+                                    sm[res]))
+
+        failed = sm.setdefault(TEST_NA, 0) + sm.setdefault(TEST_ABORTED, 0) + sm.setdefault(TEST_FAIL, 0)
+        if failed > 0:
+            print("\n%sWARNING! NOT ALL TEST PASSED!%s\n" % (
+                  ConsoleTestResults.RESULT_COLORS[TEST_FAIL], bcolors.ENDC))
         #
         #   Dump report to a JSON file
         #
@@ -1448,3 +1468,5 @@ if __name__ == '__main__':
         f = open("out/bts-test."+test_id+".json", 'w')
         f.write(tr.json())
         f.close()
+
+
