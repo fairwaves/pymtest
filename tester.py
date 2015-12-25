@@ -223,7 +223,7 @@ class MainWindowImpl(QMainWindow, main_form):
             for trx in channels:
                 QApplication.processEvents()
                 resp = self.ui_ask("Connect CMD57 to the TRX%d." % trx)
-                if resp != 's':
+                if resp:
                     self.tr.set_test_scope("TRX%d" % trx)
                     self.txConsole.appendPlainText("TRX set: %s" % str(self.bts.trx_set_primary(trx)))
                     QApplication.processEvents()
@@ -253,9 +253,10 @@ class MainWindowImpl(QMainWindow, main_form):
                             QApplication.processEvents()
                             bts_test.test_power_vswr_dcdc(cmd, self.bts, trx, self.tr, dut_checks)
                             QApplication.processEvents()
-                            self.ui_ask("Disconnect cable from the TRX%d." % trx)
+                            resp = self.ui_ask("Disconnect cable from the TRX%d." % trx)
                             QApplication.processEvents()
-                            bts_test.test_vswr_vga2(self.bts, trx, self.tr)
+                            if resp:
+                                bts_test.test_vswr_vga2(self.bts, trx, self.tr)
         finally:
             # switch back to TRX1
             QApplication.processEvents()

@@ -610,13 +610,13 @@ class BtsControlLocalManual(BtsControlBase):
         return p.stdout.readlines()
 
     def osmo_trx_start(self):
-        ui_ask("Please start osmo-trx")
+        return ui_ask("Please start osmo-trx")
 
     def osmo_trx_stop(self):
-        ui_ask("Please stop osmo-trx")
+        return ui_ask("Please stop osmo-trx")
 
     def osmo_trx_restart(self):
-        ui_ask("Please restart osmo-trx")
+        return ui_ask("Please restart osmo-trx")
 
 
 class BtsControlLocal(BtsControlBase):
@@ -1278,18 +1278,21 @@ class ConsoleTestResults(TestResults):
 def ui_ask(text):
     if ABORT_EXECUTION:
          print ("Abort ui '%s'" % text)
-         return None
+         return False
 
     # Note: this flush code works under *nix OS only
-    while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
-        os.read(sys.stdin.fileno(), 4096)
+    try:
+        while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
+            os.read(sys.stdin.fileno(), 4096)
 
-    print (" ")
-    print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    val = input(text+" ")
-    print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print (" ")
-    return val
+        print (" ")
+        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        val = input(text+" ")
+        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print (" ")
+        return val != 's' and val != 'c'
+    except:
+        return False
 
 
 def get_band(arfcn):
@@ -1407,7 +1410,7 @@ if __name__ == '__main__':
         trxes = [ int(i) for i in channels ]
         for trx in trxes:
             resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
-            if resp != 's':
+            if resp:
                 tr.set_test_scope("TRX%d" % trx)
                 tr.output_progress(bts.trx_set_primary(trx))
                 bts.osmo_trx_restart()
@@ -1426,8 +1429,9 @@ if __name__ == '__main__':
                         tr.set_test_scope("TRX%d/power" % trx)
                         test_power_vswr_vga2(cmd, bts, trx, tr)
                         test_power_vswr_dcdc(cmd, bts, trx, tr, dut_checks)
-                        ui_ask("Disconnect cable from the TRX%d." % trx)
-                        test_vswr_vga2(bts, trx, tr)
+                        resp = ui_ask("Disconnect cable from the TRX%d." % trx)
+                        if resp:
+                            test_vswr_vga2(bts, trx, tr)
     finally:
         # switch back to TRX1
         bts.trx_set_primary(1)
