@@ -24,7 +24,6 @@ class MainWindowImpl(QMainWindow, main_form):
             item.setCheckState(Qt.Checked)
             item.setToolTip(bts_test.TEST_NAMES[i])
 
-
     def __init__(self, app, *args):
         super(MainWindowImpl, self).__init__(*args)
         self.app = app
@@ -35,6 +34,8 @@ class MainWindowImpl(QMainWindow, main_form):
         self.tests = {}
         self.tests_debug = True
         self.cbHosts.addItems(["manual", "local"])
+        self.cbDevice.clear()
+        self.cbDevice.addItems([ i for i in bts_params.HARDWARE_LIST.keys() ])
 
     def enable_controls(self, en):
         self.listWidget.setEnabled(en)
@@ -155,16 +156,15 @@ class MainWindowImpl(QMainWindow, main_form):
 
         bts_ip = self.cbHosts.currentText()
         dut = self.cbDevice.currentText()
-        if dut=="UmSITE-TM3-900":
-            dut_checks = bts_params.UMSITE_TM3_PARAMS
-        elif dut=="UmSITE-TM10-900":
-            dut_checks = bts_params.UMSITE_TM10_PARAMS
-        elif dut=="UmTRX":
-            dut_checks = bts_params.UMTRX_2_3_1_PARAMS
-        elif dut=="UmTRX-2.2":
-            dut_checks = bts_params.UMTRX_2_2_PARAMS
-        else:
-            die('Unknown device under test!')
+        dut_checks = bts_params.HARDWARE_LIST[dut]
+        arfcn=int(self.spArfcn.value())
+
+        if dut_checks["hw_band"] is not None and not bts_test.check_arfcn(arfcn, dut_checks["hw_band"]):
+            QMessageBox.question(self, 'ARFCN Error',
+                                "Hardware %s doesn't support %d ARFCN in band %s" % (
+                                    dut, arfcn, dut_checks["hw_band"]), QMessageBox.Ok)
+            self.test_ok = False
+            return
 
         # Initialize test results structure
         self.func_dict = bts_test.init_test_checks(dut_checks)
@@ -187,7 +187,6 @@ class MainWindowImpl(QMainWindow, main_form):
 
         QApplication.processEvents()
 
-        arfcn=int(self.spArfcn.value())
         bts_test.tr = self.tr
         bts_test.bts = self.bts
         bts_test.run_bts_tests(self.tr, bts_test.get_band(arfcn))

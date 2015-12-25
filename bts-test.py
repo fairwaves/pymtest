@@ -134,7 +134,6 @@ TEST_NAMES = {
     "vswr_vga2": "VSWR vs VGA2"
 }
 
-#DUT_PARAMS = UMSITE_TM3_PARAMS
 def init_test_checks(DUT_PARAMS):
     return {
         "test_id": test_none_checker(),
@@ -1221,10 +1220,8 @@ def parse_args():
                         type=int, default=100,
                         help="ARFCN to test")
     parser.add_argument("-d", "--dut",
-                        dest='dut', type=str, default='UmSITE-TM10-900',
-                        help="Device under test for the CMD57 control "
-                             "(default: UmSITE-TM10-900)"
-                             " {UmSITE-TM3-900 UmTRX UmTRX-2.2}")
+                        dest='dut', type=str,
+                        help="Device under test for the CMD57 control ")
     parser.add_argument("-x", "--exclude", type=str,
                         help="Exclude some tests")
     parser.add_argument("-L", "--list", type=str,
@@ -1315,13 +1312,22 @@ def set_band_using_arfcn(cmd, arfcn):
     else:
         print ("This band isn't supported by CMD57")
 
+def check_arfcn(n, band):
+    if band == "GSM900":
+        return n >= 1 and n <= 124
+    elif band == "EGSM900":
+        return n >= 0 and n <= 124 or n >= 975 and n <= 1023
+    elif band == "RGSM900":
+        return n >= 0 and n <= 124 or n >= 955 and n <= 1023
+    elif band == "GSM1800" or band == "DCS1800":
+        return n >= 512 and n <= 885
+    else:
+        return False
 
 ##################
 #   Main
 ##################
 if __name__ == '__main__':
-    EQUIPMENT_TYPES = ["UmTRX", "UmTRX-2.2", "UmSITE-TM3-900", "UmSITE-TM10-900"]
-
     #
     #   Initialization
     #
@@ -1338,16 +1344,17 @@ if __name__ == '__main__':
         for i,v in enumerate(TEST_NAMES):
             print("%20s: %50s" % (i, v))
 
-    if dut=="UmSITE-TM3-900":
-        dut_checks = bts_params.UMSITE_TM3_PARAMS
-    elif dut=="UmSITE-TM10-900":
-        dut_checks = bts_params.UMSITE_TM10_PARAMS
-    elif dut=="UmTRX":
-        dut_checks = bts_params.UMTRX_2_3_1_PARAMS
-    elif dut=="UmTRX-2.2":
-        dut_checks = bts_params.UMTRX_2_2_PARAMS
-    else:
-        die('Unknown device under test!')
+    if dut not in bts_params.HARDWARE_LIST.keys():
+        print ("Unknown device %s!\nSupported: %s" % (dut,
+                 str([i for i in bts_params.HARDWARE_LIST.keys()])))
+        sys.exit(4)
+
+    dut_checks = bts_params.HARDWARE_LIST[dut]
+
+    if dut_checks["hw_band"] is not None and not check_arfcn(args.arfcn, dut_checks["hw_band"]):
+        print ("Hardware %s doesn't support ARFCN %d in band %s" % (
+                    dut, args.arfcn, dut_checks["hw_band"]))
+        sys.exit(5)
 
     # Initialize test results structure
     tr = ConsoleTestResults(init_test_checks(dut_checks))

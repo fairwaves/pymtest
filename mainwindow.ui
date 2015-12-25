@@ -38,26 +38,6 @@
          <height>27</height>
         </rect>
        </property>
-       <item>
-        <property name="text">
-         <string>UmSITE-TM10-900</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>UmSITE-TM3-900</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>UmTRX</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>UmTRX-2.2</string>
-        </property>
-       </item>
       </widget>
       <widget class="QLabel" name="label">
        <property name="geometry">
