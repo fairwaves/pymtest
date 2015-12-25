@@ -221,8 +221,29 @@ class TestResults:
 
     def __init__(self, checks):
         self.test_results = {}
+        self.prev_test_results = {}
         self.checks = checks
         self.scope = 'global'
+
+    def load_prev_data(self, test_id):
+        best_file = None
+        best_i = -1
+        check_string = "bts-test.%s_" % test_id
+        for file in os.listdir("out/"):
+            i = file.startswith(check_string)
+            if i > 0:
+                 self.output_progress("JSON data found on %s" % file[i+len(check_string)-1:-5])
+                 ddx = [int(x) for x in file[i+len(check_string)-1:-5].split('-')]
+                 idx = ((100 * ddx[0] + ddx[1]) * 100 + ddx[2]) * 1000000 + ddx[3]
+                 if idx > best_i:
+                     best_i = idx
+                     best_file = file
+        if best_i == -1:
+            self.output_progress('No previous data were found for %s' % test_id)
+
+        self.output_progress('Loading previous data from %s' % best_file)
+        with open("out/" + best_file, 'rt', encoding="utf-8") as content:
+            self.prev_test_results = json.loads(content.read())
 
     def set_test_scope(self, scope):
         self.scope = scope
@@ -246,23 +267,52 @@ class TestResults:
     def output_progress(self, string):
         print(string)
 
-    def print_result(self, t, testname, result, value):
-        print ("[%s] %s%50s:  %s%7s%s" % (
+
+    def skip_test(self, testname, skip_result=TEST_NA):
+        t = time.time()
+        old_t, old_result, old_value = self._get_old(testname)
+        if old_t is not None:
+            self._get_scope_subtree()[testname] = (old_t, old_result, old_value)
+        self.print_result(t, testname, skip_result, None, old_result, old_value)
+
+
+    def print_result(self, t, testname, result, value, old_result=None, old_value=None):
+        was=" (%7s)" % TEST_RESULT_NAMES[old_result] if old_result is not None else ""
+        if old_result == result or old_result is None:
+            tcolot = bcolors.BOLD
+        elif old_result != TEST_OK and result == TEST_OK:
+            tcolot = bcolors.OKGREEN
+        elif old_result == TEST_OK and result != TEST_OK:
+            tcolot = bcolors.FAIL
+        else:
+            tcolot = bcolors.WARNING
+
+        print ("[%s] %s%50s:  %s%7s%s%s" % (
             time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
-            bcolors.BOLD,
+            tcolot,
             TEST_NAMES.get(testname, testname),
             TestResults.RESULT_COLORS[result],
             TEST_RESULT_NAMES[result],
-            bcolors.ENDC), end="")
+            bcolors.ENDC,
+            was), end="")
         if value is not None:
             print (" (%s)" % str(value))
         else:
             print ("")
 
+    def _get_old(self, testname):
+        if (len(self.prev_test_results) == 0 or
+          self.scope not in self.prev_test_results or
+          testname   not in self.prev_test_results[self.scope]):
+            return (None, None, None)
+        return self.prev_test_results[self.scope][testname]
+
     def set_test_result(self, testname, result, value=None):
         t = time.time()
+        old_t, old_result, old_value = self._get_old(testname)
         self._get_scope_subtree()[testname] = (t, result, value)
-        self.print_result(t, testname, result, value)
+        self.print_result(t, testname, result, value, old_result, old_value)
+
         return result
 
     def check_test_result(self, testname, value):
@@ -299,11 +349,13 @@ def def_func_visitor(func, testname, *args, **kwargs):
     global ABORT_EXECUTION
     if testname in EXCLUDE_TESTS:
         res = TEST_NA
-        tr.print_result(time.time(), testname, res, None)
+        #tr.print_result(time.time(), testname, res, None)
+        tr.skip_test(testname, res)
         return res
     if ABORT_EXECUTION:
         res = TEST_ABORTED
-        tr.set_test_result(testname, res)
+        #tr.set_test_result(testname, res)
+        tr.skip_test(testname, res)
         return res
 
     try:
@@ -669,7 +721,9 @@ def gen_test_id():
         return None
     name = uname_res[2].split()[1]
     timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
-    return name+'_'+serial_res[2]+'_'+timestr
+    fixed_test_id = name+'_'+serial_res[2]
+    tr.load_prev_data(fixed_test_id)
+    return fixed_test_id+'_'+timestr
 
 
 @test_checker_decorator("umtrx_autocalibrate")
