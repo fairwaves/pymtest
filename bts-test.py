@@ -455,6 +455,21 @@ class BtsControlBase:
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
 
+    def bts_led_blink(self, period=1):
+        ''' Continously blink LED '''
+        return self._exec_stdout_stderr(
+             '%s umsite-led-blink_%dhz.sh' % (self.sudo, period))
+
+    def bts_led_on(self, on=1):
+        ''' On or off system LED'''
+        return self._exec_stdout_stderr(
+             '%s umsite-led-on-%s.sh' % ( self.sudo, 'on' if on else 'off'))
+
+    def bts_shutdown(self):
+        ''' Shutdown BTS host '''
+        return self._exec_stdout_stderr(
+            '%s shutdown -h now' % (self.sudo))
+
     def umtrx_reset_test(self):
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
@@ -1388,6 +1403,7 @@ if __name__ == '__main__':
     # CMD57 has sloppy time synchronization, so burst timing can drift
     # by a few symbols
     bts.bts_set_maxdly(10)
+    bts.bts_led_blink(2)
 
     tr.set_test_scope("system")
     run_bts_tests(tr, get_band(args.arfcn))
@@ -1395,6 +1411,7 @@ if __name__ == '__main__':
     if len(args.channels) == 0:
         print("No channel tests were selected")
         bts.osmo_trx_restart()
+        bts.bts_led_on()
         sys.exit(0)
 
     #
@@ -1445,6 +1462,7 @@ if __name__ == '__main__':
         # switch back to TRX1
         bts.trx_set_primary(1)
         bts.osmo_trx_restart()
+        bts.bts_led_on()
 
         sm = tr.summary()
         for res in sm:

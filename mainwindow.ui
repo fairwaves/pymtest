@@ -217,21 +217,19 @@
         <bool>true</bool>
        </property>
       </widget>
-      <zorder>cbDevice</zorder>
-      <zorder>label</zorder>
-      <zorder>label_3</zorder>
-      <zorder>btStartStop</zorder>
-      <zorder>lnPort</zorder>
-      <zorder>label_2</zorder>
-      <zorder>btAll</zorder>
-      <zorder>btNone</zorder>
-      <zorder>cbCh1</zorder>
-      <zorder>cbCh2</zorder>
-      <zorder>spArfcn</zorder>
-      <zorder>label_4</zorder>
-      <zorder>btFind</zorder>
-      <zorder></zorder>
-      <zorder>cbHosts</zorder>
+      <widget class="QPushButton" name="btBlink">
+       <property name="geometry">
+        <rect>
+         <x>463</x>
+         <y>50</y>
+         <width>38</width>
+         <height>27</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Blink</string>
+       </property>
+      </widget>
      </widget>
     </item>
     <item>

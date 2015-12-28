@@ -130,6 +130,14 @@ class MainWindowImpl(QMainWindow, main_form):
     def on_btNone_clicked(self):
         self.set_to_all_tests(False)
 
+    @pyqtSlot()
+    def on_btBlink_clicked(self):
+        bts = self.create_bts()
+        bts.bts_led_blink(1)
+        QMessageBox.question(self, 'LED Blinking',
+                            'LED is blinking on "%s"\nPress OK to stop blinking' % self.cbHosts.currentText(), QMessageBox.Ok)
+        bts.bts_led_on()
+
     def set_to_all_tests(self, en=True):
         s = Qt.Checked if en else Qt.Unchecked
         for i in range(self.listWidget.count()):
@@ -159,12 +167,22 @@ class MainWindowImpl(QMainWindow, main_form):
             self.tr.set_test_result(testname, res)
         return res
 
+    def create_bts(self):
+        bts_ip = self.cbHosts.currentText()
+        if bts_ip == "local":
+            bts = bts_test.BtsControlLocal('/tmp/bts-test', 'pkexec')
+        elif bts_ip == "manual":
+            bts = bts_test.BtsControlLocalManual('/tmp/bts-test', 'pkexec')
+        else:
+            bts = bts_test.BtsControlSsh(bts_ip, 22, 'fairwaves', 'fairwaves')
+
+        return bts
+
     def on_start(self):
         QApplication.processEvents()
         self.tests = { self.listWidget.item(i).text():
             self.listWidget.item(i).checkState() == Qt.Checked for i in range(len(bts_test.TEST_NAMES)) }
 
-        bts_ip = self.cbHosts.currentText()
         dut = self.cbDevice.currentText()
         dut_checks = bts_params.HARDWARE_LIST[dut]
         arfcn=int(self.spArfcn.value())
@@ -181,18 +199,14 @@ class MainWindowImpl(QMainWindow, main_form):
         self.tr = MyTestResults(self.on_test_result, self.on_test_progress, self.func_dict)
 
         self.txConsole.appendPlainText("Establishing connection with the BTS.\n")
-        if bts_ip == "local":
-            self.bts = bts_test.BtsControlLocal('/tmp/bts-test', 'pkexec')
-        elif bts_ip == "manual":
-            self.bts = bts_test.BtsControlLocalManual('/tmp/bts-test', 'pkexec')
-        else:
-            self.bts = bts_test.BtsControlSsh(bts_ip, 22, 'fairwaves', 'fairwaves')
+        self.bts = self.create_bts()
 
         # CMD57 has sloppy time synchronization, so burst timing can drift
         # by a few symbols
         self.bts.bts_set_maxdly(10)
-
+        self.bts.bts_led_blink(2)
         self.tr.set_test_scope("system")
+
         #bts_test.get_band(args.arfcn)run_bts_tests(tr, get_band(args.arfcn))
 
         QApplication.processEvents()
@@ -272,6 +286,7 @@ class MainWindowImpl(QMainWindow, main_form):
             QApplication.processEvents()
             self.bts.trx_set_primary(1)
             self.bts.osmo_trx_restart()
+            self.bts.bts_led_on()
             QApplication.processEvents()
 
             sm = self.tr.summary()
