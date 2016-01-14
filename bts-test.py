@@ -247,6 +247,7 @@ class TestResults(metaclass=ABCMeta):
                      best_file = file
         if best_i == -1:
             self.output_progress('No previous data were found for %s' % test_id)
+            return
 
         self.output_progress('Loading previous data from %s' % best_file)
         with open("out/" + best_file, 'rt', encoding="utf-8") as content:
