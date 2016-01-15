@@ -13,6 +13,7 @@ import socket
 import bts_test
 import bts_params
 import serial
+from scpi.errors import TimeoutError
 
 main_form, base_class = loadUiType('mainwindow.ui')
 
@@ -160,6 +161,11 @@ class MainWindowImpl(QMainWindow, main_form):
         try:
             val = func(*args, **kwargs)
             res = self.tr.check_test_result(testname, val)
+        except TimeoutError as e:
+            res = bts_test.TEST_FAIL
+            self.tr.set_test_result(testname, res)
+            self.txConsole.appendHtml("<pre>[%s] <font color=\"red\">Timeout (%s) %40s</font></pre>" % (
+                                      self.get_ts(), e, testname))
         except:
             if self.tests_debug:
                 traceback.print_exc()

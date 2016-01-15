@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import paramiko
 from scpi.devices import cmd57_console as cmd57
+from scpi.errors import TimeoutError
 import atexit
 import argparse
 import traceback
@@ -362,6 +363,10 @@ def def_func_visitor(func, testname, *args, **kwargs):
         res = TEST_ABORTED
         tr.set_test_result(testname, res)
         ABORT_EXECUTION=True
+    except TimeoutError as e:
+        res = TEST_FAIL
+        tr.set_test_result(testname, res)
+        print ("Error: %s" % e)
     except:
         if _tests_debug:
             traceback.print_exc()
