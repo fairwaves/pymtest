@@ -47,6 +47,9 @@ with open(DEV, 'rt') as f:
 	if abs(delta) < 45:
 		print("SUCCESS")
 		sys.exit(0)
+	else:
+		print("Detected system time lag: %f seconds" % delta)
+		sys.exit(4)
 
 sys.exit(2)
 
