@@ -76,6 +76,7 @@ TEST_RESULT_NAMES = {
 # TODO: Merge TEST_NAMES and TEST_CHECKS into a single class
 TEST_NAMES = {
     "test_id": "Test ID",
+    "test_id2": "Test ID",
     "bts_uname": "BTS system information",
     "bts_hw_model": "BTS hardware model",
     "bts_hw_band": "BTS hardware band",
@@ -90,6 +91,7 @@ TEST_NAMES = {
     "tester_options": "Tester installed options",
     "bcch_presence": "BCCH detected",
     "burst_power_peak": "TRX output power (dBm)",
+    "burst_power_peak_wait": "Wait for TRX output power (dBm)",
     "burst_power_avg": "Burst avg power (dBm)",
     "burst_power_array": "Burst power array (dBm)",
     "freq_error": "Frequency error (Hz)",
@@ -132,12 +134,15 @@ TEST_NAMES = {
     "enable_tch_loopback": "Enabling BTS loopback mode",
     "power_vswr_vga2": "Power&VSWR vs VGA2",
     "power_vswr_dcdc": "Power&VSWR vs DCDC control",
-    "vswr_vga2": "VSWR vs VGA2"
+    "vswr_vga2": "VSWR vs VGA2",
+    "configure_cmd57" : "Configure CMD57 for using with the DUT",
+    "run_tch_sync" : "Syncronize CMD57 with the DUT"
 }
 
 def init_test_checks(DUT_PARAMS):
     return {
         "test_id": test_none_checker(),
+        "test_id2" : test_none_checker(),
         "bts_uname": test_ignore_checker(),
         "bts_hw_model": test_substr_checker(
             DUT_PARAMS["hw_model"]),
@@ -155,6 +160,7 @@ def init_test_checks(DUT_PARAMS):
         "burst_power_peak": test_minmax_checker(
             DUT_PARAMS["burst_power_peak_min"],
             DUT_PARAMS["burst_power_peak_max"]),
+        "burst_power_peak_wait": test_val_checker(TEST_OK),
         "burst_power_avg": test_minmax_checker(
             DUT_PARAMS["burst_power_avg_min"],
             DUT_PARAMS["burst_power_avg_max"]),
@@ -205,7 +211,9 @@ def init_test_checks(DUT_PARAMS):
         "enable_tch_loopback": test_ignore_checker(),
         "power_vswr_vga2": test_none_checker(),
         "power_vswr_dcdc": test_none_checker(),
-        "vswr_vga2": test_none_checker()
+        "vswr_vga2": test_none_checker(),
+        "configure_cmd57" : test_none_checker(),
+        "run_tch_sync" : test_val_checker(TEST_OK)
     }
 
 class bcolors:
@@ -760,6 +768,19 @@ def gen_test_id(**kwargs):
     tr.load_prev_data(fixed_test_id)
     return fixed_test_id+'_'+timestr
 
+@test_checker_decorator("test_id2")
+def gen_test_id2(**kwargs):
+    ''' Generates a unique test ID '''
+    tr = kwargs["TR"]
+    uname_res = tr.get_test_result("bts_uname", "system")
+    print (uname_res)
+    if uname_res[1] != TEST_OK:
+        return None
+    name = uname_res[2].split()[1]
+    timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
+    fixed_test_id = name
+    tr.load_prev_data(fixed_test_id)
+    return fixed_test_id+'_'+timestr
 
 @test_checker_decorator("umtrx_autocalibrate", DUT=["UmTRX","UmSITE"])
 def bts_umtrx_autocalibrate(bts, preset, filename_stdout, filename_stderr):
@@ -809,6 +830,7 @@ def test_burst_power_peak(**kwargs):
     ''' Check output power level '''
     return kwargs["CMD"].ask_peak_power()
 
+@test_checker_decorator("burst_power_peak_wait")
 def test_burst_power_peak_wait(**kwargs):
     ''' Wait for output power level '''
     timeout = kwargs["TIMEOUT"] if "TIMEOUT" in kwargs else 20
@@ -1479,7 +1501,7 @@ if __name__ == '__main__':
 
     # CMD57 has sloppy time synchronization, so burst timing can drift
     # by a few symbols
-    bts.bts_set_maxdly(10)
+#    bts.bts_set_maxdly(10)
     bts.bts_led_blink(2)
 
     tr.set_test_scope("system")
@@ -1496,17 +1518,19 @@ if __name__ == '__main__':
     #
 
     # Establish connection with CMD57 and configure it
-    print("Establishing connection with the CMD57.")
-    cmd = cmd57_init(args.cmd57_port)
-    if dut.startswith("UmTRX"):
-        cmd.set_io_used('I1O2')
-    else:
-        cmd.set_io_used('I1O1')
+#    print("Establishing connection with the CMD57.")
+#    cmd = cmd57_init(args.cmd57_port)
+#    if dut.startswith("UmTRX"):
+#        cmd.set_io_used('I1O2')
+#    else:
+#        cmd.set_io_used('I1O1')
 
-    set_band_using_arfcn(cmd, args.arfcn)
+#    set_band_using_arfcn(cmd, args.arfcn)
 
-    cmd.switch_to_man_bidl()
-    cmd57_configure(cmd, args.arfcn)
+#    cmd.switch_to_man_bidl()
+#    cmd57_configure(cmd, args.arfcn)
+
+    test_configure_cmd57(execargs)
 
     try:
         channels = args.channels.split(',')
