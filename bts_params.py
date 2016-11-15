@@ -80,5 +80,25 @@ HARDWARE_LIST = {
     "ddc_r_max" : 0,
     "ddc_r_def" : 0,
     "hw_band" : None
+  },
+  "OC": {
+    "login": "opencellular",
+    "password": "123",
+    "hw_model": "OC",
+    "burst_power_peak_min": 31,  # dBm
+    "burst_power_peak_max": 34,  # dBm
+    "burst_power_avg_min": 30,  # dBm
+    "burst_power_avg_max": 33,  # dBm
+    "freq_error": 200,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 3.0,  # deg
+    "ddc_r_min" : 0,
+    "ddc_r_max" : 0,
+    "ddc_r_def" : 0,
+    "hw_band" : None,
+    "ber_unused_ts_power" : -20,
+    "ber_used_ts_power" : -70
   }
 }
