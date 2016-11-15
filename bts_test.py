@@ -224,7 +224,7 @@ class TestResults(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def print_result(self, t, testname, result, value, old_result, old_value, delta):
+    def print_result(self, t, testname, result, value, old_result, old_value, delta, reason):
         pass
 
     def __init__(self, checks):
@@ -273,13 +273,13 @@ class TestResults(metaclass=ABCMeta):
         return self.test_results.setdefault(scope, {})
 
 
-    def skip_test(self, testname, skip_result=TEST_NA):
+    def skip_test(self, testname, skip_result=TEST_NA, reason=None):
         t = time.time()
         delta = None
         old_t, old_result, old_value = self._get_old(testname)
         if old_t is not None:
             self._get_scope_subtree()[testname] = (old_t, old_result, old_value)
-        self.print_result(t, testname, skip_result, None, old_result, old_value, delta)
+        self.print_result(t, testname, skip_result, None, old_result, old_value, delta, reason)
 
 
     def _get_old(self, testname):
@@ -1279,7 +1279,7 @@ class ConsoleTestResults(TestResults):
     def output_progress(self, string):
             print(string)
 
-    def print_result(self, t, testname, result, value, old_result, old_value, delta):
+    def print_result(self, t, testname, result, value, old_result, old_value, delta, reason=None):
         sdelta = " [%+f]" % delta if delta is not None else ""
         was=" (%7s)%s" % (TEST_RESULT_NAMES[old_result], sdelta) if old_result is not None else ""
         if old_result == result or old_result is None:
@@ -1290,15 +1290,16 @@ class ConsoleTestResults(TestResults):
             tcolot = bcolors.FAIL
         else:
             tcolot = bcolors.WARNING
-
-        print ("[%s] %s%50s:  %s%7s%s%s" % (
+        exr = "" if reason is None else " (%s)" % reason
+        print ("[%s] %s%50s:  %s%7s%s%s%s" % (
             time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
             tcolot,
             TEST_NAMES.get(testname, testname),
             ConsoleTestResults.RESULT_COLORS[result],
             TEST_RESULT_NAMES[result],
             bcolors.ENDC,
-            was), end="")
+            was,
+            exr), end="")
         if value is not None:
             print (" (%s)" % str(value))
         else:
