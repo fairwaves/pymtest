@@ -1345,6 +1345,8 @@ def parse_args():
                         help="Display all available tests and exit")
     parser.add_argument("-c", "--channels", type=str, default='1,2',
                         help="Test only this channels")
+    parser.add_argument("-s", "--script", dest='script', type=str, default=None,
+                        help="Run external script")
     return parser.parse_args()
 
 
@@ -1445,6 +1447,209 @@ def check_arfcn(n, band):
     else:
         return False
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    return v.lower() in ("yes", "true", "t", "1")
+
+def apply_subs(string, **variables):
+    for key, value in variables.items():
+        string = string.replace("{{%s}}" % key, str(value))
+    return string
+
+def merge_dicts(base, extention, **extra):
+    d = { k: base[k] for k in base.keys() }
+    for e in extention.keys():
+        d[e] = extention[e]
+    for x in extra.keys():
+        d[x] = extra[x]
+    return d
+
+class TestCaseCall:
+    def __init__(self, testname, testcallscript = None):
+        print("C: %s : %s" % (testname, testcallscript))
+        self.enable = True
+        self.test = testname
+        self.name = testname
+        self.desc = testname # TODO
+        self.abort_bundle_on_failure = False
+        self.args = None #no extra args
+        self.errors = 0
+
+        if not testname in KNOWN_TESTS_DESC:
+            print ("Test `%s` hasn't been found nknown tests" % testname)
+            self.errors = self.errors + 1
+
+        if testcallscript is not None:
+            self.abort_bundle_on_failure = str2bool(testcallscript["abort_bundle_on_failure"]) if "abort_bundle_on_failure" in testcallscript else False
+            self.args = testcallscript["args"] if "args" in testcallscript else None
+
+    def __str__(self):
+        return self.test
+
+    def run(self, path, **kwargs):
+        ti = KNOWN_TESTS_DESC[self.test]
+        if not self.enable:
+            kwargs["TR"].output_progress("Test %s in %s bundle is disabled" % (self.test, path))
+            return True
+        if ti.check_dut(dut):
+            print ("Calling %s/%s -> %s()" % (path, self.test, ti.func.__name__))
+
+            res = DECORATOR_DEFAULT(ti.func, ti.testname, **kwargs)
+            if self.abort_bundle_on_failure and res != TEST_OK:
+                kwargs["TR"].output_progress("Test %s failed which also fails whole %s bundle" % (self.test, path))
+                return False
+        else:
+            kwargs["TR"].skip_test(ti.testname, TEST_NA,
+                                  "Function %s in bundle %s isn't compatible with DUT:%s, ignoring" % (ti.func.__name__, self.name, dut))
+        return True
+
+class TestRepeat:
+    def __init__(self, repeatscript):
+        print ("R: %s" % repeatscript)
+        self.enable = True
+        self.errors = 0
+        self.name = repeatscript["name"] if "name" in repeatscript else "<repeat>"
+        self.desc = repeatscript["description"] if "description" in repeatscript else self.name
+        self.args = repeatscript["args"] if "args" in repeatscript else None
+        if self.args is not None:
+            self.count = len(self.args)
+            self.untill = None
+        elif "count" in repeatscript:
+            self.count = repeatscript["count"]
+            self.untill = None
+        else:
+            self.errors = self.errors + 1
+
+        if "bundle" in repeatscript:
+            self.execute = TestBundle(repeatscript["bundle"])
+        elif "repeat" in repeatscript:
+            self.execute = TestRepeat(repeatscript["repeat"])
+        else:
+            self.errors = self.errors + 1
+            return
+        self.errors += self.execute.errors
+
+    def __str__(self):
+        return self.name
+
+    def run(self, path, **kwargs):
+        if not self.enable:
+            return True
+        i = 0
+        if self.args is not None:
+            for a in self.args:
+                ea = { k: apply_subs(a[k], **kwargs) if isinstance(a[k], str) else a[k] for k in a.keys() }
+                self.execute.run("%s/%s@%s" % (path, self.name, ea), **merge_dicts(kwargs, ea, ITER="%s/%d" % (kwargs["ITER"],i) ))
+                i += 1
+
+
+class TestBundle:
+    def __init__(self, bundlescript):
+        print ("B: %s" % bundlescript)
+        self.enable = True
+        self.name = bundlescript["name"]
+        self.desc = bundlescript["description"] if "description" in bundlescript else self.name
+        self.scope = bundlescript["scope"] if "scope" in bundlescript else "global"
+        self.tests = []
+        self.errors = 0
+        for test in bundlescript["testsuites"]:
+            self.errors = self.errors + self._checktests(test)
+
+    def __str__(self):
+        return self.name
+    def __repr__(self):
+        return "Name: %s, Desc: '%s', tests: '%s'" % (self.name, self.desc, self.tests)
+
+    def _checktests(self, testscript):
+        if isinstance(testscript, dict):
+            key = next(iter(testscript.keys()))
+            if key == "bundle":
+                test = TestBundle(testscript[key])
+            elif key == "repeat":
+                test = TestRepeat(testscript[key])
+            else:
+                test = TestCaseCall(key, testscript[key])
+        else:
+            test = TestCaseCall(testscript, None)
+        if test.errors == 0:
+            self.tests.append(test)
+        return test.errors
+
+    def run_bundle(self, **kwargs):
+        return self.run("", **merge_dicts(kwargs, {"ITER":""}))
+
+    def run(self, path, **kwargs):
+        if not self.enable:
+            return True
+
+        scope = apply_subs(self.scope, **kwargs)
+        kwargs["TR"].set_test_scope(scope)
+        for t in self.tests:
+            if not t.run("%s/%s" % (path, self.name), **kwargs):
+                # Bundle aborted
+                return False
+        return True
+
+import yaml
+class TestExecutor:
+    def __init__(self, testscript):
+        self.yamltree = yaml.load(testscript)
+        self.bundles = []
+        self.errors = 0
+
+        for i in self.yamltree:
+            self._initbundle(i)
+
+        if self.errors > 0:
+            print ("Got %d errors in testscript, aborting" % self.errors)
+            sys.exit(6)
+
+    def _initbundle(self, bundletree):
+        if "bundle" in bundletree:
+            #try:
+                bundle = TestBundle(bundletree["bundle"])
+                self.bundles.append(bundle)
+                self.errors = self.errors + bundle.errors
+            #except:
+            #    self.errors = self.errors + 1
+            #    print ("Bundle '%s' contains errors" % bundletree["bundle"])
+        else:
+            self.errors = self.errors + 1
+            print ("Parsing error, don't know how to handle: %s" % bundletree)
+
+
+    def run(self, **kwargs):
+        print ("Run testsuite with global variables: `%s`" % kwargs)
+        for b in self.bundles:
+            kwargs["TR"].output_progress ("Executing bundle: %s" % b)
+            b.run_bundle(**kwargs)
+
+
+def finalize_testsuite(tr):
+    sm = tr.summary()
+    for res in sm:
+        print("%s%8s%s: %2d" % (ConsoleTestResults.RESULT_COLORS[res],
+                                TEST_RESULT_NAMES[res],
+                                bcolors.ENDC,
+                                sm[res]))
+
+    failed = sm.setdefault(TEST_NA, 0) + sm.setdefault(TEST_ABORTED, 0) + sm.setdefault(TEST_FAIL, 0)
+    if failed > 0:
+        print("\n%sWARNING! NOT ALL TEST PASSED!%s\n" % (
+              ConsoleTestResults.RESULT_COLORS[TEST_FAIL], bcolors.ENDC))
+    #
+    #   Dump report to a JSON file
+    #
+    if ABORT_EXECUTION:
+        print ("Test was aborted, don't save data")
+        sys.exit(1)
+
+    test_id = str(tr.get_test_result("test_id2", "system")[2])
+    f = open("out/bts-test."+test_id+".json", 'w')
+    f.write(tr.json())
+    f.close()
+
 ##################
 #   Main
 ##################
@@ -1495,6 +1700,13 @@ if __name__ == '__main__':
         bts = BtsControlSsh(args.bts_ip, 22, dut_checks['login'], dut_checks['password'])
 
     band = get_band(args.arfcn)
+    if args.script is not None:
+        texec = TestExecutor(open(args.script, "r").read())
+
+        cmd = cmd57_init(args.cmd57_port)
+        texec.run(DUT=dut, DUT_CHECKS=dut_checks, BTS=bts, ARFCN=args.arfcn, TR=tr, BAND=band, CMD=cmd, CHAN='')
+        finalize_testsuite(tr)
+        sys.exit(0)
 
 
     execargs = {'DUT':dut,
