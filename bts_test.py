@@ -375,9 +375,26 @@ def def_func_visitor(func, testname, *args, **kwargs):
     return res
 
 DECORATOR_DEFAULT = def_func_visitor
+KNOWN_TESTS_DESC = {}
 
-def test_checker_decorator(testname):
+class TestFuncDesc:
+    def __init__(self, testname, func, **kwargs):
+        self.testname = testname
+        self.func = func
+        if "DUT" in kwargs:
+            self.DUT = kwargs["DUT"]
+        else:
+            self.DUT = None
+
+    def check_dut(self, dut):
+        if self.DUT is not None:
+            return dut in self.DUT
+        return True
+
+def test_checker_decorator(testname, **kwargs):
     def real_decorator(func):
+        KNOWN_TESTS_DESC[testname] = TestFuncDesc(testname, func, **kwargs)
+
         @wraps(func)
         def wrapper(*args, **kwargs):
             return DECORATOR_DEFAULT(func, testname, *args, **kwargs)
