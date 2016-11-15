@@ -607,7 +607,7 @@ class BtsControlBase:
 
 class BtsControlSsh(BtsControlBase):
 
-    def __init__(self, bts_ip, port=22, username='fairwaves', password='fairwaves',
+    def __init__(self, bts_ip, port=22, username='', password='',
                  tmpdir='/tmp/bts-test'):
         ''' Connect to a BTS and prepare it for testing '''
         self.ssh = paramiko.SSHClient()
