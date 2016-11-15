@@ -212,7 +212,7 @@ def init_test_checks(DUT_PARAMS):
         "power_vswr_vga2": test_none_checker(),
         "power_vswr_dcdc": test_none_checker(),
         "vswr_vga2": test_none_checker(),
-        "configure_cmd57" : test_none_checker(),
+        "configure_cmd57" : test_ignore_checker(),
         "run_tch_sync" : test_val_checker(TEST_OK)
     }
 
@@ -949,19 +949,24 @@ def test_ber_configure(**kwargs):
     cmd = kwargs["CMD"]
     dut = kwargs["DUT"]
     dut_checks = kwargs["DUT_CHECKS"]
-    unused_ts_power = dut_checks["ber_unused_ts_power"] if "ber_unused_ts_power" in dut_checks  else 30
-    cmd.set_ber_unused_ts_power(unused_ts_power)
-
-    if dut == "UmTRX":
-        used_ts_power = float(dut_checks["ber_used_ts_power"] if "ber_used_ts_power" in dut_checks  else -75)
-        cmd.set_ber_test_num(3)
-        return cmd.set_ber_used_ts_power(used_ts_power)
-    elif dut == "OC":
-        used_ts_power = float(dut_checks["ber_used_ts_power"] if "ber_used_ts_power" in dut_checks  else -70)
-        cmd.set_ber_test_num(1)
-        return cmd.set_ber_used_ts_power(used_ts_power)
+    if "ber_unused_ts_power" in kwargs:
+        ber_unused_ts_power = kwargs["ber_unused_ts_power"]
+    elif "ber_unused_ts_power" in dut_checks:
+        ber_unused_ts_power = dut_checks["ber_unused_ts_power"]
     else:
-        return cmd.set_ber_test_num(1)
+        ber_unused_ts_power = 30
+    cmd.set_ber_unused_ts_power(ber_unused_ts_power)
+
+    if "ber_used_ts_power" in kwargs:
+        ber_used_ts_power = kwargs["ber_used_ts_power"]
+    elif "ber_unused_ts_power" in dut_checks:
+        ber_used_ts_power = dut_checks["ber_used_ts_power"]
+    else:
+        ber_used_ts_power = -104
+    cmd.set_ber_used_ts_power(ber_used_ts_power)
+
+    ber_test_num = dut_checks["ber_test_num"] if "ber_test_num" in dut_checks else 1
+    return cmd.set_ber_test_num(1)
 
 
 @test_checker_decorator("ber_used_ts_power")
@@ -1203,10 +1208,11 @@ def run_tch_sync(**kwargs):
     kwargs["CMD"].switch_to_idle()
 
     # Measure peak power before everything else
-    test_burst_power_peak_wait(**kwargs)
+    res = test_burst_power_peak_wait(**kwargs)
 
     # Prepare for TCH tests
-    return test_enable_tch_loopback(**kwargs)
+    test_enable_tch_loopback(**kwargs)
+    return res
 
 ###############################
 #   Main test run function
