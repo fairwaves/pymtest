@@ -63,7 +63,9 @@ HARDWARE_LIST = {
     "ddc_r_min" : 0,
     "ddc_r_max" : 0,
     "ddc_r_def" : 0,
-    "hw_band" : None
+    "hw_band" : None,
+    "ber_used_ts_power" : -80,
+    "ber_test_num" : 3
   },
   "UmTRX-v2.2": {
     "hw_model": "UmTRX-2.2",
@@ -79,7 +81,9 @@ HARDWARE_LIST = {
     "ddc_r_min" : 0,
     "ddc_r_max" : 0,
     "ddc_r_def" : 0,
-    "hw_band" : None
+    "hw_band" : None,
+    "ber_used_ts_power" : -80,
+    "ber_test_num" : 3
   },
   "OC": {
     "login": "opencellular",

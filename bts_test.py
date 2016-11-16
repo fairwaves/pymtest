@@ -1,20 +1,15 @@
 #!/usr/bin/python3
-import paramiko
-from scpi.devices import cmd57_console as cmd57
-from scpi.errors import TimeoutError
-import atexit
+#import paramiko
 import argparse
 import traceback
 import re
 import json
 import os, sys, select  # for stdin flush
-import subprocess
+#import subprocess
 from abc import ABCMeta, abstractmethod
 
 import bts_params
 
-UMSITE_TM3_VGA2_DEF = 22
-UMTRX_VGA2_DEF = UMSITE_TM3_VGA2_DEF
 
 #######################
 #   Tests definition
@@ -24,6 +19,8 @@ import time
 
 from fwtp_core import *
 from testsuite_bts import *
+
+import yaml
 
 # Enable/disable debug mode
 _tests_debug = 1
@@ -163,7 +160,7 @@ class TestResults(metaclass=ABCMeta):
 EXCLUDE_TESTS=[]
 ABORT_EXECUTION = False
 
-def def_func_visitor(path, ti, *args, **kwargs):
+def def_func_visitor(path, ti, kwargs):
     global ABORT_EXECUTION
     testname = ti.testname
     func = ti.func
@@ -179,7 +176,7 @@ def def_func_visitor(path, ti, *args, **kwargs):
         return res
 
     try:
-        val = func(*args, **kwargs)
+        val = func(kwargs)
         res = tr.check_test_result(path, ti, val, **kwargs)
     except KeyboardInterrupt:
         res = TEST_ABORTED
@@ -200,318 +197,6 @@ def def_func_visitor(path, ti, *args, **kwargs):
 #   BTS control functions
 ###############################
 
-class BtsControlBase:
-
-    helpers = ["obscvty.py", "osmobts-en-loopback.py",
-               "osmobts-set-maxdly.py", "osmobts-set-slotmask.py",
-               "osmo-trx-primary-trx.py", "umtrx_set_dcdc_r.py",
-               "umtrx_get_vswr_sensors.py",
-               # TODO: Move this from helpers to packages
-               "umtrx_property_tree.py",
-               "umtrx_ctrl.py", "umtrx_lms.py"]
-
-    locals = ["test_umtrx_reset.py", "test_umtrx_gps_time.py"]
-
-    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
-        # Copy helper scripts to the BTS
-        self.tmpdir = tmpdir
-        self._exec_stdout('mkdir -p '+self.tmpdir)
-        self._copy_file_list('helper/', self.helpers, self.tmpdir)
-        self._copy_file_list('./', self.locals, self.tmpdir)
-        self.sudo = sudopkg
-
-    def _tee(self, stream, filename):
-        ''' Write lines from the stream to the file and return the lines '''
-        lines = [  i if type(i) is str else i.decode("utf-8")  for i in stream.readlines() ]
-        f = open(filename, 'w')
-        f.writelines(lines)
-        f.close()
-        return lines
-
-    def get_uname(self):
-        ''' Get uname string '''
-        return self._exec_stdout('uname -a')[0].strip()
-
-    def trx_set_primary(self, num):
-        ''' Set primary TRX '''
-        print ("Setting primary TRX to TRX%d" % num)
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            '%s python osmo-trx-primary-trx.py %d' % (self.sudo, num))
-
-    def bts_en_loopback(self):
-        ''' Enable loopbak in the BTS '''
-        print ("Enabling BTS loopback")
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            'python osmobts-en-loopback.py')
-
-    def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
-        ''' Set BTS TRX0 slotmask '''
-        print ("Setting BTS slotmask")
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
-            % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
-
-    def umtrx_get_gps_time(self):
-        '''Obtain time diff GPS vs system'''
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            '%s python3 test_umtrx_gps_time.py' % (self.sudo))
-
-    def bts_get_hw_config(self, param):
-        ''' Get hardware configuration parameter '''
-        return self._exec_stdout_stderr(
-             'cat /etc/osmocom/hardware.conf | grep %s | cut -d= -f2' % param)
-
-    def bts_set_maxdly(self, val):
-        ''' Set BTS TRX0 max timing advance '''
-        print("BTS: setting max delay to %d." % val)
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            'python osmobts-set-maxdly.py %d' % val)
-
-    def bts_led_blink(self, period=1):
-        ''' Continously blink LED '''
-        return self._exec_stdout_stderr(
-             '%s umsite-led-blink_%dhz.sh' % (self.sudo, period))
-
-    def bts_led_on(self, on=1):
-        ''' On or off system LED'''
-        return self._exec_stdout_stderr(
-             '%s umsite-led-on-%s.sh' % ( self.sudo, 'on' if on else 'off'))
-
-    def bts_shutdown(self):
-        ''' Shutdown BTS host '''
-        return self._exec_stdout_stderr(
-            '%s shutdown -h now' % (self.sudo))
-
-    def umtrx_reset_test(self):
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            '%s python3 test_umtrx_reset.py' % self.sudo)
-
-    def umtrx_set_dcdc_r(self, val):
-        ''' Set UmTRX DCDC control register value '''
-#        print("UmTRX: setting DCDC control register to %d." % val)
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            'python umtrx_set_dcdc_r.py %d' % val)
-
-    def umtrx_set_tx_vga2(self, chan, val):
-        ''' Set UmTRX Tx VGA2 gain '''
-#        print("UmTRX: setting UmTRX Tx VGA2 gain for chan %d to %d."
-#              % (chan, val))
-        return self._exec_stdout_stderr(
-            'cd ' + self.tmpdir + '; ' +
-            'python umtrx_lms.py --lms %d --lms-set-tx-vga2-gain %d'
-            % (chan, val))
-
-    def umtrx_get_vswr_sensors(self, chan):
-        ''' Read UmTRX VPR and VPF sensors '''
-        lines = self._exec_stdout(
-            'cd ' + self.tmpdir + '; ' +
-            'python umtrx_get_vswr_sensors.py')
-        res = [float(x.strip()) for x in lines]
-        start = (chan-1)*2
-        return res[start:start+2]
-
-    def start_runit_service(self, service):
-        ''' Start a runit controlled service '''
-        print("Starting '%s' service." % service)
-        return self._exec_stdout_stderr(
-            '%s sv start %s' % (self.sudo, service))
-        # TODO: Check result
-
-    def stop_runit_service(self, service):
-        ''' Stop a runit controlled service '''
-        print("Stopping '%s' service." % service)
-        return self._exec_stdout_stderr(
-            '%s sv stop %s' % (self.sudo, service))
-        # TODO: Check result
-
-    def restart_runit_service(self, service):
-        ''' Restart a runit controlled service '''
-        print("Restarting '%s' service." % service)
-        return self._exec_stdout_stderr(
-            '%s sv restart %s' % (self.sudo, service))
-        # TODO: Check result
-
-    def osmo_trx_start(self):
-        return self.start_runit_service("osmo-trx")
-
-    def osmo_trx_stop(self):
-        return self.stop_runit_service("osmo-trx")
-
-    def osmo_trx_restart(self):
-        return self.restart_runit_service("osmo-trx")
-
-    def get_umtrx_eeprom_val(self, name):
-        ''' Read UmTRX serial from EEPROM.
-            All UHD apps should be stopped at the time of reading. '''
-        lines = self._exec_stdout_stderr(
-            '/usr/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
-        eeprom_val = re.compile(r'    EEPROM \["'+name+r'"\] is "(.*)"')
-        for s in lines:
-            match = eeprom_val.match(s)
-            if match is not None:
-                return match.group(1)
-        return None
-
-    def umtrx_autocalibrate(self, preset, filename_stdout, filename_stderr):
-        ''' Run UmTRX autocalibration for the selected band.
-            preset - One or more of the following space seprated values:
-                     GSM850, EGSM900 (same as GSM900),
-                     GSM1800 (same as DCS1800), GSM1900 (same as PCS1900)
-            All UHD apps should be stopped at the time of executing. '''
-        stdin, stdout, stderr = self._exec(
-            '%s umtrx_auto_calibration %s' % (self.sudo, preset))
-        # TODO: Check result
-        lines = self._tee(stdout, filename_stdout)
-        self._tee(stderr, filename_stderr)
-        line_re = re.compile(r'Calibration type .* side . from .* to .*: ([A-Z]+)')
-        if len(lines) == 0:
-            return False
-
-        for l in lines:
-            match = line_re.match(l)
-            if match is not None:
-                if match.group(1) != 'SUCCESS':
-                    return False
-        return True
-
-    def _exec_stdout(self, cmd_str):
-        barrs = self._exec_stdout_b(cmd_str)
-        print (barrs)
-        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
-
-    def _exec_stdout_stderr(self, cmd_str):
-        barrs = self._exec_stdout_stderr_b(cmd_str)
-        print (barrs)
-        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
-
-class BtsControlSsh(BtsControlBase):
-
-    def __init__(self, bts_ip, port=22, username='', password='',
-                 tmpdir='/tmp/bts-test'):
-        ''' Connect to a BTS and prepare it for testing '''
-        self.ssh = paramiko.SSHClient()
-        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(bts_ip, port=port, username=username, password=password, timeout=2)
-        BtsControlBase.__init__(self, tmpdir)
-
-    def _copy_file_list(self, dir_from, flie_list, dir_to):
-        sftp = self.ssh.open_sftp()
-        for f in flie_list:
-            sftp.put(dir_from+f, dir_to+'/'+f)
-        sftp.close()
-
-    def _exec(self, cmd_str):
-        return self.ssh.exec_command(cmd_str)
-
-    def _exec_stdout(self, cmd_str):
-        stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
-        return stdout.readlines()
-
-    def _exec_stdout_stderr(self, cmd_str):
-        stdin, stdout, stderr = self.ssh.exec_command(cmd_str)
-        return stderr.readlines() + stdout.readlines()
-
-
-class BtsControlLocalManual(BtsControlBase):
-
-    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
-        BtsControlBase.__init__(self, tmpdir, sudopkg)
-
-    def _copy_file_list(self, dir_from, flie_list, dir_to):
-        for f in flie_list:
-            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
-
-    def _exec(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True)
-        return (p.stdin, p.stdout, p.stderr)
-
-    def _exec_stdout_b(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdout=subprocess.PIPE,
-                             shell=True)
-        return p.stdout.readlines()
-
-    def _exec_stdout_stderr_b(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT,
-                             shell=True)
-        return p.stdout.readlines()
-
-    def osmo_trx_start(self):
-        return ui_ask("Please start osmo-trx")
-
-    def osmo_trx_stop(self):
-        return ui_ask("Please stop osmo-trx")
-
-    def osmo_trx_restart(self):
-        return ui_ask("Please restart osmo-trx")
-
-
-class BtsControlLocal(BtsControlBase):
-
-    def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
-        BtsControlBase.__init__(self, tmpdir, sudopkg)
-
-    def _copy_file_list(self, dir_from, flie_list, dir_to):
-        for f in flie_list:
-            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
-
-    def _exec(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True)
-        return (p.stdin, p.stdout, p.stderr)
-
-    def _exec_stdout_b(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdout=subprocess.PIPE,
-                             shell=True)
-        return p.stdout.readlines()
-
-    def _exec_stdout_stderr_b(self, cmd_str):
-        p = subprocess.Popen(cmd_str,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT,
-                             shell=True)
-        return p.stdout.readlines()
-
-    def osmo_trx_start(self):
-        return self._exec_stdout_stderr("%s sv start osmo-trx" % self.sudo)
-
-    def osmo_trx_stop(self):
-        return self._exec_stdout_stderr("%s sv stop osmo-trx" % self.sudo)
-
-    def osmo_trx_restart(self):
-        return self._exec_stdout_stderr("%s sv restart osmo-trx" % self.sudo)
-
-
-
-###############################
-#   CMD57 control functions
-###############################
-
-
-def cmd57_init(cmd57_port):
-    dev = cmd57.rs232(cmd57_port, rtscts=True)
-    atexit.register(dev.quit)
-    return dev
 
 ###############################
 #   Command line args parsing
@@ -586,46 +271,34 @@ class ConsoleTestResults(TestResults):
         else:
             print ("")
 
+class ConsoleUI:
+    def ask(text):
+        if ABORT_EXECUTION:
+             print ("Abort ui '%s'" % text)
+             return False
 
-def ui_ask(text):
-    if ABORT_EXECUTION:
-         print ("Abort ui '%s'" % text)
-         return False
+        # Note: this flush code works under *nix OS only
+        try:
+            while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
+                os.read(sys.stdin.fileno(), 4096)
 
-    # Note: this flush code works under *nix OS only
-    try:
-        while len(select.select([sys.stdin.fileno()], [], [], 0.0)[0])>0:
-            os.read(sys.stdin.fileno(), 4096)
-
-        print (" ")
-        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        val = input(text+" ")
-        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print (" ")
-        return val != 's' and val != 'c'
-    except:
-        return False
+            print (" ")
+            print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            val = input(text+" ")
+            print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            print (" ")
+            return val != 's' and val != 'c'
+        except:
+            return False
 
 
-
-def check_arfcn(n, band):
-    if band == "GSM900":
-        return n >= 1 and n <= 124
-    elif band == "EGSM900":
-        return n >= 0 and n <= 124 or n >= 975 and n <= 1023
-    elif band == "RGSM900":
-        return n >= 0 and n <= 124 or n >= 955 and n <= 1023
-    elif band == "GSM1800" or band == "DCS1800":
-        return n >= 512 and n <= 885
-    else:
-        return False
 
 def str2bool(v):
     if isinstance(v, bool):
         return v
     return v.lower() in ("yes", "true", "t", "1")
 
-def apply_subs(string, **variables):
+def apply_subs(string, variables):
     for key, value in variables.items():
         string = string.replace("{{%s}}" % key, str(value))
     return string
@@ -660,7 +333,7 @@ class TestCaseCall:
     def __str__(self):
         return self.test
 
-    def run(self, path, **kwargs):
+    def run(self, path, kwargs):
         ti = TestSuiteConfig.KNOWN_TESTS_DESC[self.test]
         if not self.enable:
             kwargs["TR"].output_progress("Test %s in %s bundle is disabled" % (self.test, path))
@@ -668,7 +341,7 @@ class TestCaseCall:
         if ti.check_dut(dut):
             print ("Calling %s/%s -> %s()" % (path, self.test, ti.func.__name__))
 
-            res = TestSuiteConfig.DECORATOR_DEFAULT(path, ti, **kwargs)
+            res = TestSuiteConfig.DECORATOR_DEFAULT(path, ti, kwargs)
             if self.abort_bundle_on_failure and res != TEST_OK:
                 kwargs["TR"].output_progress("Test %s failed which also fails whole %s bundle" % (self.test, path))
                 return False
@@ -706,14 +379,14 @@ class TestRepeat:
     def __str__(self):
         return self.name
 
-    def run(self, path, **kwargs):
+    def run(self, path, kwargs):
         if not self.enable:
             return True
         i = 0
         if self.args is not None:
             for a in self.args:
-                ea = { k: apply_subs(a[k], **kwargs) if isinstance(a[k], str) else a[k] for k in a.keys() }
-                self.execute.run("%s/%s@%s" % (path, self.name, ea), **merge_dicts(kwargs, ea, ITER="%s/%d" % (kwargs["ITER"],i) ))
+                ea = { k: apply_subs(a[k], kwargs) if isinstance(a[k], str) else a[k] for k in a.keys() }
+                self.execute.run("%s/%s@%s" % (path, self.name, ea), merge_dicts(kwargs, ea, ITER="%s/%d" % (kwargs["ITER"],i) ))
                 i += 1
 
 
@@ -749,22 +422,19 @@ class TestBundle:
             self.tests.append(test)
         return test.errors
 
-    def run_bundle(self, **kwargs):
-        return self.run("", **merge_dicts(kwargs, {"ITER":""}))
-
-    def run(self, path, **kwargs):
+    def run(self, path, kwargs):
         if not self.enable:
             return True
 
-        scope = apply_subs(self.scope, **kwargs)
+        scope = apply_subs(self.scope, kwargs)
         kwargs["TR"].set_test_scope(scope)
         for t in self.tests:
-            if not t.run("%s/%s" % (path, self.name), **kwargs):
+            if not t.run("%s/%s" % (path, self.name), kwargs):
                 # Bundle aborted
                 return False
         return True
 
-import yaml
+
 class TestExecutor:
     def __init__(self, testscript):
         self.yamltree = yaml.load(testscript)
@@ -792,14 +462,16 @@ class TestExecutor:
             print ("Parsing error, don't know how to handle: %s" % bundletree)
 
 
-    def run(self, **kwargs):
-        print ("Run testsuite with global variables: `%s`" % kwargs)
+    def run(self, args):
+        print ("Run testsuite with global variables: `%s`" % args)
+        args["ITER"] = ""
         for b in self.bundles:
-            kwargs["TR"].output_progress ("Executing bundle: %s" % b)
-            b.run_bundle(**kwargs)
+            args["TR"].output_progress ("Executing bundle: %s" % b)
+            b.run("", args)
 
 
-def finalize_testsuite(tr):
+def finalize_testsuite(args):
+    tr = args["TR"]
     sm = tr.summary()
     for res in sm:
         print("%s%8s%s: %2d" % (ConsoleTestResults.RESULT_COLORS[res],
@@ -818,7 +490,8 @@ def finalize_testsuite(tr):
         print ("Test was aborted, don't save data")
         sys.exit(1)
 
-    test_id = str(tr.get_test_result("/", TestSuiteConfig.KNOWN_TESTS_DESC["test_id2"], "system")[2])
+    test_id = args["TEST_ID"]
+    #test_id = str(tr.get_test_result("/", TestSuiteConfig.KNOWN_TESTS_DESC["test_id2"], "system")[2])
     f = open("out/bts-test."+test_id+".json", 'w')
     f.write(tr.json())
     f.close()
@@ -826,6 +499,18 @@ def finalize_testsuite(tr):
 ##################
 #   Main
 ##################
+def check_arfcn(n, band):
+    if band == "GSM900":
+        return n >= 1 and n <= 124
+    elif band == "EGSM900":
+        return n >= 0 and n <= 124 or n >= 975 and n <= 1023
+    elif band == "RGSM900":
+        return n >= 0 and n <= 124 or n >= 955 and n <= 1023
+    elif band == "GSM1800" or band == "DCS1800":
+        return n >= 512 and n <= 885
+    else:
+        return False
+
 if __name__ == '__main__':
     TestSuiteConfig.DECORATOR_DEFAULT = def_func_visitor
     #
@@ -856,130 +541,23 @@ if __name__ == '__main__':
                     dut, args.arfcn, dut_checks["hw_band"]))
         sys.exit(5)
 
-    # Initialize test results structure
-    #tr = ConsoleTestResults(init_test_checks(dut_checks))
-    #test_deps = TestDependencies()
 
-    #
-    #   BTS tests
-    #
     tr = ConsoleTestResults()
-
-    # Establish ssh connection with the BTS under test
-    print("Establishing connection with the BTS.")
-    if args.bts_ip == "local":
-        bts = BtsControlLocal()
-    elif args.bts_ip == "manual":
-        bts = BtsControlLocalManual()
-    else:
-        bts = BtsControlSsh(args.bts_ip, 22, dut_checks['login'], dut_checks['password'])
-
     band = get_band(args.arfcn)
+
     if args.script is not None:
         texec = TestExecutor(open(args.script, "r").read())
-
-        cmd = cmd57_init(args.cmd57_port)
-        texec.run(DUT=dut, DUT_CHECKS=dut_checks, BTS=bts, ARFCN=args.arfcn, TR=tr, BAND=band, CMD=cmd, CHAN='')
-        finalize_testsuite(tr)
+        args = {
+            "BTS_IP" : args.bts_ip,
+            "DUT"    : dut,
+            "DUT_CHECKS" : dut_checks,
+            "ARFCN"  : args.arfcn,
+            "TR"     : tr,
+            "UI"     : ConsoleUI(),
+            "CHAN"   : "" }
+        texec.run(args)
+        finalize_testsuite(args)
         sys.exit(0)
 
-
-    execargs = {'DUT':dut,
-                'DUT_CHECKS':dut_checks,
-                'BTS':bts,
-                'ARFCN':args.arfcn,
-                'TR':tr,
-                'BAND':band,
-                'CHAN':''}
-
-    # CMD57 has sloppy time synchronization, so burst timing can drift
-    # by a few symbols
-#    bts.bts_set_maxdly(10)
-    bts.bts_led_blink(2)
-
-    tr.set_test_scope("system")
-    run_bts_tests(execargs)
-
-    if len(args.channels) == 0:
-        print("No channel tests were selected")
-        bts.osmo_trx_restart()
-        bts.bts_led_on()
-        sys.exit(0)
-
-    #
-    #   CMD57 tests
-    #
-
-    # Establish connection with CMD57 and configure it
-#    print("Establishing connection with the CMD57.")
-#    cmd = cmd57_init(args.cmd57_port)
-#    if dut.startswith("UmTRX"):
-#        cmd.set_io_used('I1O2')
-#    else:
-#        cmd.set_io_used('I1O1')
-
-#    set_band_using_arfcn(cmd, args.arfcn)
-
-#    cmd.switch_to_man_bidl()
-#    cmd57_configure(cmd, args.arfcn)
-
-    test_configure_cmd57(execargs)
-
-    try:
-        channels = args.channels.split(',')
-        trxes = [ int(i) for i in channels ]
-        for trx in trxes:
-            execargs['CHAN'] = trx
-            resp = ui_ask("Connect CMD57 to the TRX%d." % trx)
-            if resp:
-                tr.set_test_scope("TRX%d" % trx)
-                tr.output_progress(bts.trx_set_primary(trx))
-                bts.osmo_trx_restart()
-                run_cmd57_info()
-                res = run_tch_sync()
-                if res == TEST_OK:
-                    run_tx_tests(execargs)
-                    ber_scope = "TRX%d/BER" % trx
-                    tr.set_test_scope(ber_scope)
-                    run_ber_tests(dut)
-                    if tr.get_test_result("ber_test_result")[1] != TEST_OK:
-                        tr.output_progress("Re-running BER test")
-                        tr.clear_test_scope(ber_scope)
-                        run_ber_tests(dut)
-                    if not dut.startswith("UmTRX"):
-                        tr.set_test_scope("TRX%d/power" % trx)
-                        test_power_vswr_vga2(execargs)
-                        test_power_vswr_dcdc(execargs)
-                        resp = ui_ask("Disconnect cable from the TRX%d." % trx)
-                        if resp:
-                            test_vswr_vga2(execargs)
-    finally:
-        # switch back to TRX1
-        bts.trx_set_primary(1)
-        bts.osmo_trx_restart()
-        bts.bts_led_on()
-
-        sm = tr.summary()
-        for res in sm:
-            print("%s%8s%s: %2d" % (ConsoleTestResults.RESULT_COLORS[res],
-                                    TEST_RESULT_NAMES[res],
-                                    bcolors.ENDC,
-                                    sm[res]))
-
-        failed = sm.setdefault(TEST_NA, 0) + sm.setdefault(TEST_ABORTED, 0) + sm.setdefault(TEST_FAIL, 0)
-        if failed > 0:
-            print("\n%sWARNING! NOT ALL TEST PASSED!%s\n" % (
-                  ConsoleTestResults.RESULT_COLORS[TEST_FAIL], bcolors.ENDC))
-        #
-        #   Dump report to a JSON file
-        #
-        if ABORT_EXECUTION:
-            print ("Test was aborted, don't save data")
-            sys.exit(1)
-
-        test_id = str(tr.get_test_result("test_id", "system")[2])
-        f = open("out/bts-test."+test_id+".json", 'w')
-        f.write(tr.json())
-        f.close()
 
 

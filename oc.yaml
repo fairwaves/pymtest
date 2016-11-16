@@ -2,13 +2,17 @@
     name: check_cmd57
     description: Check connection to CMD57
     testsuites:
+        - cmd57_init
         - tester_name
+        - tester_serial
+        - tester_version
         - tester_options
 - bundle:
     name: bts_checks
     scope: system
     description: BTS general checks
     testsuites:
+        - bts_connection
         - bts_uname
 #        - umtrx_serial
 #        - umtrx_gps_time
