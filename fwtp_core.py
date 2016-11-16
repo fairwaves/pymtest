@@ -49,9 +49,9 @@ def test_minmax_checker(min, max):
                                   val <= (max(args) if callable(max) else max) \
                                else TEST_FAIL
 
-def test_abs_checker(val):
+def test_abs_checker(limit):
     return lambda val, args: TEST_OK if val is not None and \
-                                  abs(val) <= (val(args) if callable(val) else val) \
+                                  abs(val) <= (limit(args) if callable(limit) else limit) \
                                else TEST_FAIL
 
 def test_ignore_checker():
@@ -63,7 +63,7 @@ def test_substr_checker(okstr):
                                else TEST_FAIL
 
 class TestSuiteConfig:
-    DECORATOR_DEFAULT = None
+    DECORATOR_DEFAULT = lambda path, ti, args:  args["TR"].check_test_result(path, ti, ti.func(args), args)
     KNOWN_TESTS_DESC  = {}
     CALLER_PATH = "/"
 
@@ -71,9 +71,9 @@ class TestFuncDesc:
     def __init__(self, testname, func, **kwargs):
         self.testname = testname
         self.func = func
-        self.DUT = kwargs["DUT"] if "DUT" in kwargs else None
-        self.INFO = kwargs["INFO"]if "INFO" in kwargs else testname
-        self.CHECK = kwargs["CHECK"] if "CHECK" in kwargs else test_none_checker()
+        self.DUT = kwargs.get("DUT")
+        self.INFO = kwargs.get("INFO", testname)
+        self.CHECK = kwargs.get("CHECK", test_none_checker())
 
     def check_dut(self, dut):
         if self.DUT is not None:
@@ -85,8 +85,8 @@ def test_checker_decorator(testname, **kwargs):
         TestSuiteConfig.KNOWN_TESTS_DESC[testname] = TestFuncDesc(testname, func, **kwargs)
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            return TestSuiteConfig.DECORATOR_DEFAULT( TestSuiteConfig.CALLER_PATH, TestSuiteConfig.KNOWN_TESTS_DESC[testname], *args, **kwargs)
+        def wrapper(args):
+            return TestSuiteConfig.DECORATOR_DEFAULT( TestSuiteConfig.CALLER_PATH, TestSuiteConfig.KNOWN_TESTS_DESC[testname], args)
         return wrapper
     return real_decorator
 

@@ -434,7 +434,7 @@ def bts_umtrx_autocalibrate(bts, preset, filename_stdout, filename_stderr):
 @test_checker_decorator("cmd57_init",
                         INFO="Initialize CMD57")
 def test_cmd57_init(kwargs):
-    cmd57_port = kwargs["CMD57_PORT"] if "CMD57_PORT" in kwargs else "/dev/ttyUSB0"
+    cmd57_port = kwargs.get("CMD57_PORT", "/dev/ttyUSB0")
     dev = cmd57.rs232(cmd57_port, rtscts=True)
     kwargs["CMD"] = dev
     atexit.register(dev.quit)
@@ -1072,6 +1072,46 @@ def set_band_using_arfcn(cmd, arfcn):
     else:
         print ("This band isn't supported by CMD57")
 
+def check_arfcn(n, band):
+    if band == "GSM900":
+        return n >= 1 and n <= 124
+    elif band == "EGSM900":
+        return n >= 0 and n <= 124 or n >= 975 and n <= 1023
+    elif band == "RGSM900":
+        return n >= 0 and n <= 124 or n >= 955 and n <= 1023
+    elif band == "GSM1800" or band == "DCS1800":
+        return n >= 512 and n <= 885
+    else:
+        return False
 
+@test_checker_decorator("load_dut_checks",
+                        INFO="Load DUT specific checks")
+def load_dut_checks(kwargs):
+    import bts_params
+    dut = kwargs.get("DUT")
+
+    if dut not in bts_params.HARDWARE_LIST.keys():
+        tr.output_progress ("Unknown device %s!\nSupported: %s" % (dut,
+                 str([i for i in bts_params.HARDWARE_LIST.keys()])))
+        return None
+
+    dut_checks = bts_params.HARDWARE_LIST[dut]
+    kwargs["DUT_CHECKS"] = dut_checks
+    return dut
+
+@test_checker_decorator("check_hw_band",
+                        INFO="Check whether DUT supports selected ARFCN",
+                        CHECK=test_bool_checker())
+def check_hw_band(kwargs):
+    dut = kwargs["DUT"]
+    arfcn = kwargs["ARFCN"]
+    dut_checks = kwargs["DUT_CHECKS"]
+    hw_band = dut_checks.get("hw_band")
+
+    if hw_band is not None and not check_arfcn(arfcn, hw_band):
+        tr.output_progress ("Hardware %s doesn't support ARFCN %d in band %s" % (
+                    dut, arfcn, dut_checks["hw_band"]))
+        return False
+    return True
 
 

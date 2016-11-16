@@ -1,4 +1,10 @@
 - bundle:
+    name: check_dut_config
+    description: Check DUT configuration for the testsuite
+    testsuites:
+        - load_dut_checks
+        - check_hw_band
+- bundle:
     name: check_cmd57
     description: Check connection to CMD57
     testsuites:
