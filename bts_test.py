@@ -22,199 +22,11 @@ UMTRX_VGA2_DEF = UMSITE_TM3_VGA2_DEF
 from functools import wraps
 import time
 
-
-def test_none_checker():
-    return lambda val: TEST_OK if val is not None \
-                               else TEST_FAIL
-
-
-def test_bool_checker():
-    return lambda val: TEST_OK if val is not None and val \
-                               else TEST_FAIL
-
-
-def test_val_checker(val_ok):
-    return lambda val: TEST_OK if val is not None and val == val_ok \
-                               else TEST_FAIL
-
-
-def test_list_checker(val_ok_list):
-    return lambda val: TEST_OK if val is not None and val in val_ok_list \
-                               else TEST_FAIL
-
-
-def test_minmax_checker(min, max):
-    return lambda val: TEST_OK if val is not None and \
-                                  val >= min and \
-                                  val <= max \
-                               else TEST_FAIL
-
-
-def test_ignore_checker():
-    return lambda val: TEST_OK
-
-
-def test_substr_checker(okstr):
-    return lambda val: TEST_OK if okstr.find(val) != -1 \
-                               else TEST_FAIL
+from fwtp_core import *
+from testsuite_bts import *
 
 # Enable/disable debug mode
 _tests_debug = 1
-
-TEST_NA      = -1
-TEST_ABORTED = 0
-TEST_OK      = 1
-TEST_FAIL    = 2
-
-TEST_RESULT_NAMES = {
-    TEST_NA      : "N/A",
-    TEST_ABORTED : "ABORTED",
-    TEST_OK      : "OK",
-    TEST_FAIL    : "FAIL"
-}
-
-# TODO: Merge TEST_NAMES and TEST_CHECKS into a single class
-TEST_NAMES = {
-    "test_id": "Test ID",
-    "test_id2": "Test ID",
-    "bts_uname": "BTS system information",
-    "bts_hw_model": "BTS hardware model",
-    "bts_hw_band": "BTS hardware band",
-    "bts_umtrx_ver": "BTS umtrx ver",
-    "umtrx_gps_time": "UmTRX GPS time",
-    "umtrx_serial": "UmTRX serial number",
-    "umtrx_autocalibrate": "UmTRX autocalibration",
-    "umtrx_reset_test" : "UmTRX Reset and Safe firmware loading test",
-    "tester_name": "Tester device name",
-    "tester_serial": "Tester system serial number",
-    "tester_version": "Tester system version",
-    "tester_options": "Tester installed options",
-    "bcch_presence": "BCCH detected",
-    "burst_power_peak": "TRX output power (dBm)",
-    "burst_power_peak_wait": "Wait for TRX output power (dBm)",
-    "burst_power_avg": "Burst avg power (dBm)",
-    "burst_power_array": "Burst power array (dBm)",
-    "freq_error": "Frequency error (Hz)",
-    "phase_err_array": "Phase error array (deg)",
-    "phase_err_pk": "Phase error peak (deg)",
-    "phase_err_avg": "Phase error avg (deg)",
-    "spectrum_modulation_offsets": "Modulation spectrum measurement offsets (kHz)",
-    "spectrum_modulation_tolerance_abs": "Modulation spectrum absolute tolerance mask (dBm)",
-    "spectrum_modulation_tolerance_rel": "Modulation spectrum relative tolerance mask (dBc)",
-    "spectrum_modulation": "Modulation spectrum measured (dBc)",
-    "spectrum_modulation_match": "Modulation spectrum match",
-    "spectrum_switching_offsets": "Switching spectrum measurement offsets (kHz)",
-    "spectrum_switching_tolerance_abs": "Switching spectrum absolute tolerance mask (dBm)",
-    "spectrum_switching_tolerance_rel": "Switching spectrum relative tolerance mask (dBc)",
-    "spectrum_switching": "Switching spectrum measured (dBc)",
-    "spectrum_switching_match": "Switching spectrum match",
-    "ber_configure": "BER test configuration",
-    "ber_used_ts_power": "Used TS power (dBm)",
-    "ber_unused_ts_power": "Unused TS power (dBm)",
-    "ber_frames_num": "Frames to send",
-    "ber_max_test_time": "Test time",
-    "ber_abort_condition": "Abort condition",
-    "ber_holdoff_time": "Hold-off time",
-    "ber_limit_class_1b": "Class Ib bit errors tolerance (%)",
-    "ber_max_class_1b_samples": "Class Ib bit errors max number",
-    "ber_limit_class_2": "Class II bit errors tolerance (%)",
-    "ber_max_class_2_samples": "Class II bit errors max number",
-    "ber_limit_erased_frames": "Erased frames tolerance (%)",
-    "ber_max_erased_frames_samples": "Erased frames max number",
-    "ber_test_result": "BER test result",
-    "ber_class_1b_events": "Class Ib bit error events",
-    "ber_class_1b_ber": "Class Ib bit error rate (%)",
-    "ber_class_1b_rber": "Class Ib bit residual error rate (%)",
-    "ber_class_2_events": "Class II bit error events",
-    "ber_class_2_ber": "Class II bit error rate (%)",
-    "ber_class_2_rber": "Class II bit residual error rate (%)",
-    "ber_erased_events": "Erased frame events",
-    "ber_erased_fer": "Erased frame rate (%)",
-    "ber_crc_errors": "CRC errors",
-    "enable_tch_loopback": "Enabling BTS loopback mode",
-    "power_vswr_vga2": "Power&VSWR vs VGA2",
-    "power_vswr_dcdc": "Power&VSWR vs DCDC control",
-    "vswr_vga2": "VSWR vs VGA2",
-    "configure_cmd57" : "Configure CMD57 for using with the DUT",
-    "run_tch_sync" : "Syncronize CMD57 with the DUT"
-}
-
-def init_test_checks(DUT_PARAMS):
-    return {
-        "test_id": test_none_checker(),
-        "test_id2" : test_none_checker(),
-        "bts_uname": test_ignore_checker(),
-        "bts_hw_model": test_substr_checker(
-            DUT_PARAMS["hw_model"]),
-        "bts_hw_band": test_ignore_checker(),
-        "bts_umtrx_ver": test_ignore_checker(),
-        "umtrx_serial": test_none_checker(),
-        "umtrx_autocalibrate": test_bool_checker(),
-        "umtrx_reset_test": test_bool_checker(),
-        "umtrx_gps_time": test_bool_checker(),
-        "tester_name": test_ignore_checker(),
-        "tester_serial": test_ignore_checker(),
-        "tester_version": test_ignore_checker(),
-        "tester_options": test_ignore_checker(),
-        "bcch_presence": test_bool_checker(),
-        "burst_power_peak": test_minmax_checker(
-            DUT_PARAMS["burst_power_peak_min"],
-            DUT_PARAMS["burst_power_peak_max"]),
-        "burst_power_peak_wait": test_val_checker(TEST_OK),
-        "burst_power_avg": test_minmax_checker(
-            DUT_PARAMS["burst_power_avg_min"],
-            DUT_PARAMS["burst_power_avg_max"]),
-        "burst_power_array": test_ignore_checker(),
-        "freq_error": test_minmax_checker(
-            -DUT_PARAMS["freq_error"],
-            DUT_PARAMS["freq_error"]),
-        "phase_err_array": test_ignore_checker(),
-        "phase_err_pk": test_minmax_checker(
-            DUT_PARAMS["phase_err_pk_min"],
-            DUT_PARAMS["phase_err_pk_max"]),
-        "phase_err_avg": test_minmax_checker(
-            DUT_PARAMS["phase_err_avg_min"],
-            DUT_PARAMS["phase_err_avg_max"]),
-        "spectrum_modulation_offsets": test_ignore_checker(),
-        "spectrum_modulation_tolerance_abs": test_ignore_checker(),
-        "spectrum_modulation_tolerance_rel": test_ignore_checker(),
-        "spectrum_modulation": test_ignore_checker(),
-        "spectrum_modulation_match": test_val_checker("MATC"),
-        "spectrum_switching_offsets": test_ignore_checker(),
-        "spectrum_switching_tolerance_abs": test_ignore_checker(),
-        "spectrum_switching_tolerance_rel": test_ignore_checker(),
-        "spectrum_switching": test_ignore_checker(),
-        "spectrum_switching_match": test_ignore_checker(),
-        "ber_configure": test_ignore_checker(),
-        "ber_used_ts_power": test_ignore_checker(),
-        "ber_unused_ts_power": test_ignore_checker(),
-        "ber_frames_num": test_ignore_checker(),
-        "ber_max_test_time": test_ignore_checker(),
-        "ber_abort_condition": test_ignore_checker(),
-        "ber_holdoff_time": test_ignore_checker(),
-        "ber_limit_class_1b": test_ignore_checker(),
-        "ber_max_class_1b_samples": test_ignore_checker(),
-        "ber_limit_class_2": test_ignore_checker(),
-        "ber_max_class_2_samples": test_ignore_checker(),
-        "ber_limit_erased_frames": test_ignore_checker(),
-        "ber_max_erased_frames_samples": test_ignore_checker(),
-        "ber_test_result": test_val_checker("PASS"),
-        "ber_class_1b_events": test_ignore_checker(),
-        "ber_class_1b_ber": test_ignore_checker(),
-        "ber_class_1b_rber": test_ignore_checker(),
-        "ber_class_2_events": test_ignore_checker(),
-        "ber_class_2_ber": test_ignore_checker(),
-        "ber_class_2_rber": test_ignore_checker(),
-        "ber_erased_events": test_ignore_checker(),
-        "ber_erased_fer": test_ignore_checker(),
-        "ber_crc_errors": test_ignore_checker(),
-        "enable_tch_loopback": test_ignore_checker(),
-        "power_vswr_vga2": test_none_checker(),
-        "power_vswr_dcdc": test_none_checker(),
-        "vswr_vga2": test_none_checker(),
-        "configure_cmd57" : test_ignore_checker(),
-        "run_tch_sync" : test_val_checker(TEST_OK)
-    }
 
 class bcolors:
     HEADER = '\033[95m'
@@ -232,13 +44,12 @@ class TestResults(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def print_result(self, t, testname, result, value, old_result, old_value, delta, reason):
+    def print_result(self, t, path, ti, result, value, old_result, old_value, delta, reason):
         pass
 
-    def __init__(self, checks):
+    def __init__(self):
         self.test_results = {}
         self.prev_test_results = {}
-        self.checks = checks
         self.scope = 'global'
 
     def load_prev_data(self, test_id):
@@ -281,44 +92,45 @@ class TestResults(metaclass=ABCMeta):
         return self.test_results.setdefault(scope, {})
 
 
-    def skip_test(self, testname, skip_result=TEST_NA, reason=None):
+    def skip_test(self, path, ti, skip_result=TEST_NA, reason=None):
         t = time.time()
         delta = None
-        old_t, old_result, old_value = self._get_old(testname)
+        old_t, old_result, old_value = self._get_old(path, ti)
         if old_t is not None:
-            self._get_scope_subtree()[testname] = (old_t, old_result, old_value)
-        self.print_result(t, testname, skip_result, None, old_result, old_value, delta, reason)
+            self._get_scope_subtree()[ti.testname] = (old_t, old_result, old_value)
+        self.print_result(t, path, ti, skip_result, None, old_result, old_value, delta, reason)
 
 
-    def _get_old(self, testname):
+    def _get_old(self, path, ti):
         if (len(self.prev_test_results) == 0 or
           self.scope not in self.prev_test_results or
-          testname   not in self.prev_test_results[self.scope]):
+          ti.testname   not in self.prev_test_results[self.scope]):
             return (None, None, None)
-        return self.prev_test_results[self.scope][testname]
+        return self.prev_test_results[self.scope][ti.testname]
 
-    def set_test_result(self, testname, result, value=None):
+    def set_test_result(self, path, ti, result, value=None):
         t = time.time()
         delta = None
-        old_t, old_result, old_value = self._get_old(testname)
+        old_t, old_result, old_value = self._get_old(path, ti)
         try:
             fprev = float(old_value)
             fnew = float(value)
             delta = fnew - fprev
         except:
             pass
-        self._get_scope_subtree()[testname] = (t, result, value)
-        self.print_result(t, testname, result, value, old_result, old_value, delta)
+        self._get_scope_subtree()[ti.testname] = (t, result, value)
+        self.print_result(t, path, ti, result, value, old_result, old_value, delta)
 
         return result
 
-    def check_test_result(self, testname, value):
-        res = self.checks[testname](value)
-        self.set_test_result(testname, res, value)
+    def check_test_result(self, path, ti, value, **kwargs):
+        #res = self.checks[ti.testname](value)
+        res = ti.CHECK(value, kwargs)
+        self.set_test_result(path, ti, res, value)
         return res
 
-    def get_test_result(self, testname, scope=None):
-        return self._get_scope_subtree(scope).get(testname, (0, TEST_NA, None))
+    def get_test_result(self, path, ti, scope=None):
+        return self._get_scope_subtree(scope).get(ti.testname, (0, TEST_NA, None))
 
     def json(self):
         return json.dumps(self.test_results,
@@ -351,63 +163,38 @@ class TestResults(metaclass=ABCMeta):
 EXCLUDE_TESTS=[]
 ABORT_EXECUTION = False
 
-def def_func_visitor(func, testname, *args, **kwargs):
+def def_func_visitor(path, ti, *args, **kwargs):
     global ABORT_EXECUTION
+    testname = ti.testname
+    func = ti.func
     if testname in EXCLUDE_TESTS:
         res = TEST_NA
         #tr.print_result(time.time(), testname, res, None)
-        tr.skip_test(testname, res)
+        tr.skip_test(path, ti, res)
         return res
     if ABORT_EXECUTION:
         res = TEST_ABORTED
         #tr.set_test_result(testname, res)
-        tr.skip_test(testname, res)
+        tr.skip_test(path, ti, res)
         return res
 
     try:
         val = func(*args, **kwargs)
-        res = tr.check_test_result(testname, val)
+        res = tr.check_test_result(path, ti, val, **kwargs)
     except KeyboardInterrupt:
         res = TEST_ABORTED
-        tr.set_test_result(testname, res)
+        tr.set_test_result(path, ti, res)
         ABORT_EXECUTION=True
     except TimeoutError as e:
         res = TEST_FAIL
-        tr.set_test_result(testname, res)
+        tr.set_test_result(path, ti, res)
         print ("Error: %s" % e)
     except:
         if _tests_debug:
             traceback.print_exc()
         res = TEST_ABORTED
-        tr.set_test_result(testname, res)
+        tr.set_test_result(path, ti, res)
     return res
-
-DECORATOR_DEFAULT = def_func_visitor
-KNOWN_TESTS_DESC = {}
-
-class TestFuncDesc:
-    def __init__(self, testname, func, **kwargs):
-        self.testname = testname
-        self.func = func
-        if "DUT" in kwargs:
-            self.DUT = kwargs["DUT"]
-        else:
-            self.DUT = None
-
-    def check_dut(self, dut):
-        if self.DUT is not None:
-            return dut in self.DUT
-        return True
-
-def test_checker_decorator(testname, **kwargs):
-    def real_decorator(func):
-        KNOWN_TESTS_DESC[testname] = TestFuncDesc(testname, func, **kwargs)
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return DECORATOR_DEFAULT(func, testname, *args, **kwargs)
-        return wrapper
-    return real_decorator
 
 ###############################
 #   BTS control functions
@@ -715,76 +502,6 @@ class BtsControlLocal(BtsControlBase):
         return self._exec_stdout_stderr("%s sv restart osmo-trx" % self.sudo)
 
 
-###############################
-#   non-CMD57 based tests
-###############################
-
-@test_checker_decorator("bts_hw_model")
-def bts_hw_model(**kwargs):
-    return kwargs["BTS"].bts_get_hw_config('HW_MODEL')[0].strip('\n')
-
-@test_checker_decorator("bts_hw_band")
-def bts_hw_band(**kwargs):
-    return kwargs["BTS"].bts_get_hw_config('BAND')[0].strip('\n')
-
-@test_checker_decorator("bts_umtrx_ver", DUT=["UmTRX","UmSITE"])
-def bts_umtrx_ver(**kwargs):
-    return kwargs["BTS"].bts_get_hw_config('UMTRX_VER')[0].strip('\n')
-
-@test_checker_decorator("umtrx_reset_test", DUT=["UmTRX","UmSITE"])
-def umtrx_reset_test(**kwargs):
-    lns = kwargs["BTS"].umtrx_reset_test()
-    kwargs["TR"].output_progress(str(lns))
-    return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
-
-@test_checker_decorator("umtrx_gps_time", DUT=["UmTRX","UmSITE"])
-def umtrx_gps_time(**kwargs):
-    lns = kwargs["BTS"].umtrx_get_gps_time()
-    kwargs["TR"].output_progress(str(lns))
-    return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
-
-
-@test_checker_decorator("bts_uname")
-def bts_read_uname(**kwargs):
-    return kwargs["BTS"].get_uname()
-
-
-@test_checker_decorator("umtrx_serial", DUT=["UmTRX","UmSITE"])
-def bts_read_umtrx_serial(**kwargs):
-    return kwargs["BTS"].get_umtrx_eeprom_val("serial")
-
-
-@test_checker_decorator("test_id")
-def gen_test_id(**kwargs):
-    ''' Generates a unique test ID '''
-    tr = kwargs["TR"]
-    uname_res = tr.get_test_result("bts_uname", "system")
-    serial_res =  tr.get_test_result("umtrx_serial", "system")
-    if uname_res[1] != TEST_OK or serial_res[1] != TEST_OK:
-        return None
-    name = uname_res[2].split()[1]
-    timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
-    fixed_test_id = name+'_'+serial_res[2]
-    tr.load_prev_data(fixed_test_id)
-    return fixed_test_id+'_'+timestr
-
-@test_checker_decorator("test_id2")
-def gen_test_id2(**kwargs):
-    ''' Generates a unique test ID '''
-    tr = kwargs["TR"]
-    uname_res = tr.get_test_result("bts_uname", "system")
-    print (uname_res)
-    if uname_res[1] != TEST_OK:
-        return None
-    name = uname_res[2].split()[1]
-    timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
-    fixed_test_id = name
-    tr.load_prev_data(fixed_test_id)
-    return fixed_test_id+'_'+timestr
-
-@test_checker_decorator("umtrx_autocalibrate", DUT=["UmTRX","UmSITE"])
-def bts_umtrx_autocalibrate(bts, preset, filename_stdout, filename_stderr):
-    return bts.umtrx_autocalibrate(preset, filename_stdout, filename_stderr)
 
 ###############################
 #   CMD57 control functions
@@ -795,531 +512,6 @@ def cmd57_init(cmd57_port):
     dev = cmd57.rs232(cmd57_port, rtscts=True)
     atexit.register(dev.quit)
     return dev
-
-
-def cmd57_configure(cmd, arfcn):
-    ''' Configure the CMD57 '''
-    cmd.configure_man(ccch_arfcn=arfcn, tch_arfcn=arfcn,
-                      tch_ts=2, tsc=7,
-                      expected_power=37, tch_tx_power=-60,
-                      tch_mode='PR16', tch_timing=0)
-    cmd.configure_spectrum_modulation(burst_num=10)
-    print ("ARFCN=%d NET=%s" % (cmd.ask_bts_ccch_arfcn(), cmd.ask_network_type()))
-
-###############################
-#   CMD57 based tests
-###############################
-
-
-@test_checker_decorator("tester_name")
-def test_tester_id(**kwargs):
-    id_str = kwargs["CMD"].identify()
-    name = id_str[0]+' '+id_str[1]
-    tr.check_test_result("tester_serial", id_str[2])
-    tr.check_test_result("tester_version", id_str[3])
-    return name
-
-
-@test_checker_decorator("tester_options")
-def test_tester_options(**kwargs):
-    return " ".join(kwargs["CMD"].ask_installed_options())
-
-
-@test_checker_decorator("burst_power_peak")
-def test_burst_power_peak(**kwargs):
-    ''' Check output power level '''
-    return kwargs["CMD"].ask_peak_power()
-
-@test_checker_decorator("burst_power_peak_wait")
-def test_burst_power_peak_wait(**kwargs):
-    ''' Wait for output power level '''
-    timeout = kwargs["TIMEOUT"] if "TIMEOUT" in kwargs else 20
-    res = TEST_NA
-    t = time.time()
-    while res != TEST_OK and time.time()-t < timeout:
-        res = test_burst_power_peak(**kwargs)
-        if res == TEST_ABORTED:
-            return res
-    res = test_burst_power_peak(**kwargs)
-    return res
-
-
-@test_checker_decorator("bcch_presence")
-def test_bcch_presence(**kwargs):
-    ''' Check BCCH presence '''
-    cmd = kwargs["CMD"]
-    cmd.switch_to_man_bbch()
-    return cmd.ask_dev_state() == "BBCH"
-
-#
-# Burst power, phase and frequency tests
-#
-
-
-@test_checker_decorator("burst_power_avg")
-def test_burst_power_avg(**kwargs):
-    return kwargs["CMD"].ask_burst_power_avg()
-
-
-@test_checker_decorator("burst_power_array")
-def test_burst_power_array(**kwargs):
-    return kwargs["CMD"].ask_burst_power_arr()
-
-
-@test_checker_decorator("freq_error")
-def test_freq_error(**kwargs):
-    return kwargs["CMD"].ask_freq_err()
-
-
-@test_checker_decorator("phase_err_array")
-def test_phase_err_array(**kwargs):
-    return kwargs["CMD"].ask_phase_err_arr()
-
-
-@test_checker_decorator("phase_err_pk")
-def test_phase_err_pk(**kwargs):
-    return kwargs["CMD"].fetch_phase_err_pk()
-
-
-@test_checker_decorator("phase_err_avg")
-def test_phase_err_avg(**kwargs):
-    return kwargs["CMD"].fetch_phase_err_rms()
-
-#
-# Spectrum tests
-#
-
-
-@test_checker_decorator("spectrum_modulation_offsets")
-def test_spectrum_modulation_offsets(**kwargs):
-    return kwargs["CMD"].fetch_spectrum_modulation_offsets()
-
-
-@test_checker_decorator("spectrum_modulation_tolerance_abs")
-def test_spectrum_modulation_tolerance_abs(**kwargs):
-    return kwargs["CMD"].ask_spectrum_modulation_tolerance_abs()
-
-
-@test_checker_decorator("spectrum_modulation_tolerance_rel")
-def test_spectrum_modulation_tolerance_rel(**kwargs):
-    return kwargs["CMD"].ask_spectrum_modulation_tolerance_rel()
-
-
-@test_checker_decorator("spectrum_modulation")
-def test_spectrum_modulation(**kwargs):
-    return kwargs["CMD"].ask_spectrum_modulation()
-
-
-@test_checker_decorator("spectrum_modulation_match")
-def test_spectrum_modulation_match(**kwargs):
-    return kwargs["CMD"].ask_spectrum_modulation_match()
-
-
-@test_checker_decorator("spectrum_switching_offsets")
-def test_spectrum_switching_offsets(**kwargs):
-    return kwargs["CMD"].fetch_spectrum_switching_offsets()
-
-
-@test_checker_decorator("spectrum_switching_tolerance_abs")
-def test_spectrum_switching_tolerance_abs(**kwargs):
-    return kwargs["CMD"].ask_spectrum_switching_tolerance_abs()
-
-
-@test_checker_decorator("spectrum_switching_tolerance_rel")
-def test_spectrum_switching_tolerance_rel(**kwargs):
-    return kwargs["CMD"].ask_spectrum_switching_tolerance_rel()
-
-
-@test_checker_decorator("spectrum_switching")
-def test_spectrum_switching(**kwargs):
-    return kwargs["CMD"].ask_spectrum_switching()
-
-
-@test_checker_decorator("spectrum_switching_match")
-def test_spectrum_switching_match(**kwargs):
-    return kwargs["CMD"].ask_spectrum_switching_match()
-
-#
-# BER test settings
-#
-
-
-@test_checker_decorator("ber_configure")
-def test_ber_configure(**kwargs):
-    cmd = kwargs["CMD"]
-    dut = kwargs["DUT"]
-    dut_checks = kwargs["DUT_CHECKS"]
-    if "ber_unused_ts_power" in kwargs:
-        ber_unused_ts_power = kwargs["ber_unused_ts_power"]
-    elif "ber_unused_ts_power" in dut_checks:
-        ber_unused_ts_power = dut_checks["ber_unused_ts_power"]
-    else:
-        ber_unused_ts_power = 30
-    cmd.set_ber_unused_ts_power(ber_unused_ts_power)
-
-    if "ber_used_ts_power" in kwargs:
-        ber_used_ts_power = kwargs["ber_used_ts_power"]
-    elif "ber_unused_ts_power" in dut_checks:
-        ber_used_ts_power = dut_checks["ber_used_ts_power"]
-    else:
-        ber_used_ts_power = -104
-    cmd.set_ber_used_ts_power(ber_used_ts_power)
-
-    ber_test_num = dut_checks["ber_test_num"] if "ber_test_num" in dut_checks else 1
-    return cmd.set_ber_test_num(1)
-
-
-@test_checker_decorator("ber_used_ts_power")
-def test_ber_used_ts_power(**kwargs):
-    return kwargs["CMD"].ask_ber_used_ts_power()
-
-
-@test_checker_decorator("ber_unused_ts_power")
-def test_ber_unused_ts_power(**kwargs):
-    return kwargs["CMD"].ask_ber_unused_ts_power()
-
-
-@test_checker_decorator("ber_frames_num")
-def test_ber_frames_num(**kwargs):
-    return kwargs["CMD"].ask_ber_frames_num()
-
-
-@test_checker_decorator("ber_max_test_time")
-def test_ber_max_test_time(**kwargs):
-    return kwargs["CMD"].ask_ber_max_test_time()
-
-
-@test_checker_decorator("ber_abort_condition")
-def test_ber_abort_condition(**kwargs):
-    return kwargs["CMD"].ask_ber_abort_cond()
-
-
-@test_checker_decorator("ber_holdoff_time")
-def test_ber_holdoff_time(**kwargs):
-    return kwargs["CMD"].ask_ber_holdoff_time()
-
-
-@test_checker_decorator("ber_limit_class_1b")
-def test_ber_limit_class_1b(**kwargs):
-    return kwargs["CMD"].ask_ber_limit_class_1b()
-
-
-@test_checker_decorator("ber_max_class_1b_samples")
-def test_ber_max_class_1b_samples(**kwargs):
-    return kwargs["CMD"].ask_ber_max_class_1b_samples()
-
-
-@test_checker_decorator("ber_limit_class_2")
-def test_ber_limit_class_2(**kwargs):
-    return kwargs["CMD"].ask_ber_limit_class_2()
-
-
-@test_checker_decorator("ber_max_class_2_samples")
-def test_ber_max_class_2_samples(**kwargs):
-    return kwargs["CMD"].ask_ber_max_class_2_samples()
-
-
-@test_checker_decorator("ber_limit_erased_frames")
-def test_ber_limit_erased_frames(**kwargs):
-    return kwargs["CMD"].ask_ber_limit_erased_frames()
-
-
-@test_checker_decorator("ber_max_erased_frames_samples")
-def test_ber_max_erased_frames_samples(**kwargs):
-    return kwargs["CMD"].ask_ber_max_erased_frames_samples()
-
-#
-# BER test results
-#
-
-
-@test_checker_decorator("ber_test_result")
-def test_ber_test_result(**kwargs):
-    return kwargs["CMD"].read_ber_test_result()
-
-
-@test_checker_decorator("ber_class_1b_events")
-def test_ber_class_1b_events(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_1b_events()
-
-
-@test_checker_decorator("ber_class_1b_ber")
-def test_ber_class_1b_ber(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_1b_ber()
-
-
-@test_checker_decorator("ber_class_1b_rber")
-def test_ber_class_1b_rber(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_1b_rber()
-
-
-@test_checker_decorator("ber_class_2_events")
-def test_ber_class_2_events(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_2_events()
-
-
-@test_checker_decorator("ber_class_2_ber")
-def test_ber_class_2_ber(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_2_ber()
-
-
-@test_checker_decorator("ber_class_2_rber")
-def test_ber_class_2_rber(**kwargs):
-    return kwargs["CMD"].fetch_ber_class_2_rber()
-
-
-@test_checker_decorator("ber_erased_events")
-def test_ber_erased_events(**kwargs):
-    return kwargs["CMD"].fetch_ber_erased_events()
-
-
-@test_checker_decorator("ber_erased_fer")
-def test_ber_erased_fer(**kwargs):
-    return kwargs["CMD"].fetch_ber_erased_fer()
-
-
-@test_checker_decorator("ber_crc_errors")
-def test_ber_crc_errors(**kwargs):
-    return kwargs["CMD"].fetch_ber_crc_errors()
-
-#
-# Power calibration
-#
-
-
-@test_checker_decorator("power_vswr_vga2", DUT=["UmTRX","UmSITE"])
-def test_power_vswr_vga2(**kwargs):
-    cmd = kwargs["CMD"]
-    bts = kwargs["BTS"]
-    chan = kwargs["CHAN"]
-    tr = kwargs["TR"]
-    try:
-        tr.output_progress ("Testing power&VSWR vs VGA2")
-        tr.output_progress ("VGA2\tPk power\tAvg power\tVPF\tVPR")
-        res = []
-        for vga2 in range(26):
-            bts.umtrx_set_tx_vga2(chan, vga2)
-            power_pk = cmd.ask_peak_power()
-            power_avg = cmd.ask_burst_power_avg()
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((vga2, power_pk, power_avg, vpf, vpr))
-            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
-        # Sweep from max to min to weed out temperature dependency
-        for vga2 in range(25, -1, -1):
-            bts.umtrx_set_tx_vga2(chan, vga2)
-            power_pk = cmd.ask_peak_power()
-            power_avg = cmd.ask_burst_power_avg()
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((vga2, power_pk, power_avg, vpf, vpr))
-            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
-        return res
-    finally:
-        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
-
-
-@test_checker_decorator("vswr_vga2", DUT=["UmTRX","UmSITE"])
-def test_vswr_vga2(**kwargs):
-    bts = kwargs["BTS"]
-    chan = kwargs["CHAN"]
-    tr = kwargs["TR"]
-    try:
-        tr.output_progress ("Testing VSWR vs VGA2")
-        tr.output_progress ("VGA2\tVPF\tVPR")
-        res = []
-        for vga2 in range(26):
-            bts.umtrx_set_tx_vga2(chan, vga2)
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((vga2, vpf, vpr))
-            tr.output_progress("%d\t%.2f\t%.2f" % res[-1])
-        # Sweep from max to min to weed out temperature dependency
-        for vga2 in range(25, -1, -1):
-            bts.umtrx_set_tx_vga2(chan, vga2)
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((vga2, vpf, vpr))
-            tr.output_progress("%d\t%.2f\t%.2f" % res[-1])
-        return res
-    finally:
-        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
-
-
-@test_checker_decorator("power_vswr_dcdc", DUT=["UmTRX","UmSITE"])
-def test_power_vswr_dcdc(**kwargs):
-    cmd = kwargs["CMD"]
-    bts = kwargs["BTS"]
-    chan = kwargs["CHAN"]
-    tr = kwargs["TR"]
-    dut = kwargs["DUT_CHECKS"]
-    try:
-        tr.output_progress ("Testing power&VSWR vs DCDC control")
-        tr.output_progress ("DCDC_R\tPk power\tAvg power\tVPF\tVPR")
-        res = []
-        for dcdc in range(dut["ddc_r_min"], dut["ddc_r_max"]+1):
-            bts.umtrx_set_dcdc_r(dcdc)
-            power_pk = cmd.ask_peak_power()
-            power_avg = cmd.ask_burst_power_avg()
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((dcdc, power_pk, power_avg, vpf, vpr))
-            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
-        # Sweep from max to min to weed out temperature dependency
-        for dcdc in range(dut["ddc_r_max"], dut["ddc_r_min"]-1, -1):
-            bts.umtrx_set_dcdc_r(dcdc)
-            power_pk = cmd.ask_peak_power()
-            power_avg = cmd.ask_burst_power_avg()
-            (vpf, vpr) = bts.umtrx_get_vswr_sensors(chan)
-            res.append((dcdc, power_pk, power_avg, vpf, vpr))
-            tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
-        return res
-    finally:
-        bts.umtrx_set_dcdc_r(dut["ddc_r_def"])
-
-
-#
-# Helpers
-#
-
-
-@test_checker_decorator("enable_tch_loopback")
-def test_enable_tch_loopback(**kwargs):
-    kwargs["CMD"].switch_to_man_btch()
-    kwargs["BTS"].bts_en_loopback()
-
-
-@test_checker_decorator("configure_cmd57")
-def test_configure_cmd57(**kwargs):
-    cmd = kwargs["CMD"]
-    arfcn = kwargs["ARFCN"]
-    kwargs["BTS"].bts_set_maxdly(10)
-
-    if dut.startswith("UmTRX"):
-        cmd.set_io_used('I1O2')
-    else:
-        cmd.set_io_used('I1O1')
-
-    set_band_using_arfcn(cmd, arfcn)
-
-    cmd.switch_to_man_bidl()
-    cmd57_configure(cmd, arfcn)
-
-@test_checker_decorator("run_tch_sync")
-def run_tch_sync(**kwargs):
-    print("Starting Tx tests.")
-
-    # Make sure we start in idle mode
-    kwargs["CMD"].switch_to_idle()
-
-    # Measure peak power before everything else
-    res = test_burst_power_peak_wait(**kwargs)
-
-    # Prepare for TCH tests
-    test_enable_tch_loopback(**kwargs)
-    return res
-
-###############################
-#   Main test run function
-###############################
-
-
-def run_bts_tests(**kwargs):
-    print("Starting BTS tests.")
-
-    # Stop osmo-trx to unlock UmTRX
-    kwargs["BTS"].osmo_trx_stop()
-
-    # Collect information about the BTS
-    bts_read_uname(**kwargs)
-    bts_read_umtrx_serial(**kwargs)
-
-    umtrx_gps_time(**kwargs)
-    bts_hw_model(**kwargs)
-    bts_hw_band(**kwargs)
-    bts_umtrx_ver(**kwargs)
-
-    # Generate Test ID to be used in file names
-    gen_test_id(**kwargs)
-
-    # Autocalibrate UmTRX
-    test_id = str(tr.get_test_result("test_id", "system")[2])
-    bts_umtrx_autocalibrate(kwargs["BTS"], kwargs["BAND"], "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
-
-    # UmTRX Reset Test
-    umtrx_reset_test(**kwargs)
-
-    # Start osmo-trx again
-    kwargs["BTS"].osmo_trx_start()
-
-
-def run_cmd57_info(**kwargs):
-    print("Collecting CMD57 information.")
-
-    # Collect useful information about the CMD57
-    test_tester_id(**kwargs)
-    test_tester_options(**kwargs)
-
-
-
-def run_tx_tests(**kwargs):
-    print("Starting Tx tests.")
-
-    # Burst power measurements
-    test_burst_power_avg(**kwargs)
-    test_burst_power_array(**kwargs)
-
-    # Phase and frequency measurements
-    test_freq_error(**kwargs)
-    test_phase_err_array(**kwargs)
-    test_phase_err_pk(**kwargs)  # fetches calculated value only
-    test_phase_err_avg(**kwargs)  # fetches calculated value only
-
-    # Modulation spectrum measurements
-    test_spectrum_modulation_offsets(**kwargs)
-    test_spectrum_modulation_tolerance_abs(**kwargs)
-    test_spectrum_modulation_tolerance_rel(**kwargs)
-    test_spectrum_modulation(**kwargs)
-    test_spectrum_modulation_match(**kwargs)
-
-    # Switching spectrum measurements
-    test_spectrum_switching_offsets(**kwargs)
-    test_spectrum_switching_tolerance_abs(**kwargs)
-    test_spectrum_switching_tolerance_rel(**kwargs)
-    test_spectrum_switching(**kwargs)
-    test_spectrum_switching_match(**kwargs)
-
-
-def run_ber_tests(**kwargs):
-    print("Starting BER tests.")
-
-    test_ber_configure(**kwargs)
-
-    # BER test settings
-    test_ber_used_ts_power(**kwargs)
-    test_ber_unused_ts_power(**kwargs)
-    test_ber_frames_num(**kwargs)
-    test_ber_max_test_time(**kwargs)
-    test_ber_abort_condition(**kwargs)
-    test_ber_holdoff_time(**kwargs)
-    test_ber_limit_class_1b(**kwargs)
-    test_ber_max_class_1b_samples(**kwargs)
-    test_ber_limit_class_2(**kwargs)
-    test_ber_max_class_2_samples(**kwargs)
-    test_ber_limit_erased_frames(**kwargs)
-    test_ber_max_erased_frames_samples(**kwargs)
-
-    # BER test result
-    test_ber_test_result(**kwargs)
-    test_ber_class_1b_events(**kwargs)
-    test_ber_class_1b_ber(**kwargs)
-    test_ber_class_1b_rber(**kwargs)
-    test_ber_class_2_events(**kwargs)
-    test_ber_class_2_ber(**kwargs)
-    test_ber_class_2_rber(**kwargs)
-    test_ber_erased_events(**kwargs)
-    test_ber_erased_fer(**kwargs)
-    test_ber_crc_errors(**kwargs)
-
-    # Nice printout, just for the screen
-    cmd.print_ber_test_settings()
-    cmd.print_ber_test_result(False)
-
 
 ###############################
 #   Command line args parsing
@@ -1362,13 +554,13 @@ class ConsoleTestResults(TestResults):
             TEST_FAIL    : bcolors.FAIL
         }
 
-    def __init__(self, checks):
-        super().__init__(checks)
+    def __init__(self):
+        super().__init__()
 
     def output_progress(self, string):
             print(string)
 
-    def print_result(self, t, testname, result, value, old_result, old_value, delta, reason=None):
+    def print_result(self, t, path, ti, result, value, old_result, old_value, delta, reason=None):
         sdelta = " [%+f]" % delta if delta is not None else ""
         was=" (%7s)%s" % (TEST_RESULT_NAMES[old_result], sdelta) if old_result is not None else ""
         if old_result == result or old_result is None:
@@ -1383,7 +575,7 @@ class ConsoleTestResults(TestResults):
         print ("[%s] %s%50s:  %s%7s%s%s%s" % (
             time.strftime("%d %B %Y %H:%M:%S", time.localtime(t)),
             tcolot,
-            TEST_NAMES.get(testname, testname),
+            ti.INFO, #TEST_NAMES.get(testname, testname),
             ConsoleTestResults.RESULT_COLORS[result],
             TEST_RESULT_NAMES[result],
             bcolors.ENDC,
@@ -1415,25 +607,6 @@ def ui_ask(text):
         return False
 
 
-def get_band(arfcn):
-    if arfcn > 511 and arfcn < 886:
-        return "DCS1800"
-    elif (arfcn > 974 and arfcn < 1024) or arfcn == 0:
-        return "EGSM900"
-    elif arfcn > 0 and arfcn < 125:
-        return "GSM900"
-    return None
-
-def set_band_using_arfcn(cmd, arfcn):
-    bstr = get_band(arfcn)
-    if bstr == "DCS1800":
-        cmd.switch_to_idle()
-        cmd.set_network_type("DCS1800")
-    elif bstr == "EGSM900" or bstr == "GSM900":
-        cmd.switch_to_idle()
-        cmd.set_network_type("GSM900")
-    else:
-        print ("This band isn't supported by CMD57")
 
 def check_arfcn(n, band):
     if band == "GSM900":
@@ -1476,7 +649,7 @@ class TestCaseCall:
         self.args = None #no extra args
         self.errors = 0
 
-        if not testname in KNOWN_TESTS_DESC:
+        if not testname in TestSuiteConfig.KNOWN_TESTS_DESC:
             print ("Test `%s` hasn't been found nknown tests" % testname)
             self.errors = self.errors + 1
 
@@ -1488,19 +661,19 @@ class TestCaseCall:
         return self.test
 
     def run(self, path, **kwargs):
-        ti = KNOWN_TESTS_DESC[self.test]
+        ti = TestSuiteConfig.KNOWN_TESTS_DESC[self.test]
         if not self.enable:
             kwargs["TR"].output_progress("Test %s in %s bundle is disabled" % (self.test, path))
             return True
         if ti.check_dut(dut):
             print ("Calling %s/%s -> %s()" % (path, self.test, ti.func.__name__))
 
-            res = DECORATOR_DEFAULT(ti.func, ti.testname, **kwargs)
+            res = TestSuiteConfig.DECORATOR_DEFAULT(path, ti, **kwargs)
             if self.abort_bundle_on_failure and res != TEST_OK:
                 kwargs["TR"].output_progress("Test %s failed which also fails whole %s bundle" % (self.test, path))
                 return False
         else:
-            kwargs["TR"].skip_test(ti.testname, TEST_NA,
+            kwargs["TR"].skip_test(path, ti, TEST_NA,
                                   "Function %s in bundle %s isn't compatible with DUT:%s, ignoring" % (ti.func.__name__, self.name, dut))
         return True
 
@@ -1645,7 +818,7 @@ def finalize_testsuite(tr):
         print ("Test was aborted, don't save data")
         sys.exit(1)
 
-    test_id = str(tr.get_test_result("test_id2", "system")[2])
+    test_id = str(tr.get_test_result("/", TestSuiteConfig.KNOWN_TESTS_DESC["test_id2"], "system")[2])
     f = open("out/bts-test."+test_id+".json", 'w')
     f.write(tr.json())
     f.close()
@@ -1654,6 +827,7 @@ def finalize_testsuite(tr):
 #   Main
 ##################
 if __name__ == '__main__':
+    TestSuiteConfig.DECORATOR_DEFAULT = def_func_visitor
     #
     #   Initialization
     #
@@ -1683,12 +857,13 @@ if __name__ == '__main__':
         sys.exit(5)
 
     # Initialize test results structure
-    tr = ConsoleTestResults(init_test_checks(dut_checks))
+    #tr = ConsoleTestResults(init_test_checks(dut_checks))
     #test_deps = TestDependencies()
 
     #
     #   BTS tests
     #
+    tr = ConsoleTestResults()
 
     # Establish ssh connection with the BTS under test
     print("Establishing connection with the BTS.")
