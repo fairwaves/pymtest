@@ -1,0 +1,17 @@
+==============================
+DEPENDENCIES
+
+- python3-ecdsa
+- python3-paramiko (*)
+- python3-pyqt5
+- python3-serial
+- python3-yaml
+
+
+
+(*) For Ubuntu 14.04 you need to install it manually out of reposetary `sudo dpkg -i python3-paramiko_1.15.1-1fairwaves1_all.deb`
+
+
+
+
+
