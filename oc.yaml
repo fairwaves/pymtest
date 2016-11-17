@@ -30,60 +30,67 @@
         - configure_cmd57
 - bundle:
     name: tx_tests
-    scope: TRX{{CHAN}}
     testsuites:
-        - connect_rf_to_cmd57:
-        - run_tch_sync:
-            abort_bundle_on_failure: True
-            args:
-                timeout: 150
-        - burst_power_avg:
-            abort_bundle_on_failure: True
-        - burst_power_array
-        - freq_error
-        - phase_err_array
-        - phase_err_pk
-        - phase_err_avg
-        - spectrum_modulation_offsets
-        - spectrum_modulation_tolerance_abs
-        - spectrum_modulation_tolerance_rel
-        - spectrum_modulation
-        - spectrum_modulation_match
-        - spectrum_switching_offsets
-        - spectrum_switching_tolerance_abs
-        - spectrum_switching_tolerance_rel
-        - spectrum_switching
-        - spectrum_switching_match
-        - repeat:
-            args:
-                - ber_used_ts_power:   -60
-                  ber_unused_ts_power: -20
-                - ber_used_ts_power:   -70
-                  ber_unused_ts_power:  15
-            bundle:
-                name: ber_tests
-                scope: TRX{{CHAN}}/BER{{ITER}}
-                testsuites:
-                    - ber_configure
-                    - ber_used_ts_power
-                    - ber_unused_ts_power
-                    - ber_frames_num
-                    - ber_max_test_time
-                    - ber_abort_condition
-                    - ber_holdoff_time
-                    - ber_limit_class_1b
-                    - ber_max_class_1b_samples
-                    - ber_limit_class_2
-                    - ber_max_class_2_samples
-                    - ber_limit_erased_frames
-                    - ber_max_erased_frames_samples
-                    - ber_test_result
-                    - ber_class_1b_events
-                    - ber_class_1b_ber
-                    - ber_class_1b_rber
-                    - ber_class_2_events
-                    - ber_class_2_ber
-                    - ber_class_2_rber
-                    - ber_erased_events
-                    - ber_erased_fer
-                    - ber_crc_errors
+    - repeat:
+        args:
+            - CHAN: 0
+#            - CHAN: 1
+        bundle:
+            name: txr
+            scope: TRX{{CHAN}}
+            testsuites:
+                - connect_rf_to_cmd57:
+                - run_tch_sync:
+                    abort_bundle_on_failure: True
+                    args:
+                        timeout: 150
+                - burst_power_avg:
+                    abort_bundle_on_failure: True
+                - burst_power_array
+                - freq_error
+                - phase_err_array
+                - phase_err_pk
+                - phase_err_avg
+                - spectrum_modulation_offsets
+                - spectrum_modulation_tolerance_abs
+                - spectrum_modulation_tolerance_rel
+                - spectrum_modulation
+                - spectrum_modulation_match
+                - spectrum_switching_offsets
+                - spectrum_switching_tolerance_abs
+                - spectrum_switching_tolerance_rel
+                - spectrum_switching
+                - spectrum_switching_match
+                - repeat:
+                    args:
+                        - ber_used_ts_power:   -60
+                          ber_unused_ts_power: -20
+                        - ber_used_ts_power:   -70
+                          ber_unused_ts_power:  15
+                    bundle:
+                        name: ber_tests
+                        scope: TRX{{CHAN}}/BER{{ITER}}
+                        testsuites:
+                            - ber_configure
+                            - ber_used_ts_power
+                            - ber_unused_ts_power
+                            - ber_frames_num
+                            - ber_max_test_time
+                            - ber_abort_condition
+                            - ber_holdoff_time
+                            - ber_limit_class_1b
+                            - ber_max_class_1b_samples
+                            - ber_limit_class_2
+                            - ber_max_class_2_samples
+                            - ber_limit_erased_frames
+                            - ber_max_erased_frames_samples
+                            - ber_test_result
+                            - ber_class_1b_events
+                            - ber_class_1b_ber
+                            - ber_class_1b_rber
+                            - ber_class_2_events
+                            - ber_class_2_ber
+                            - ber_class_2_rber
+                            - ber_erased_events
+                            - ber_erased_fer
+                            - ber_crc_errors
