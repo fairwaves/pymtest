@@ -222,7 +222,7 @@ class MainWindowImpl(QMainWindow, main_form):
             else:
                 return #Don't wirte JSON in case of abort
 
-        test_id = str(self.args["TEST_ID"][2]) if "TEST_ID" in self.args else None
+        test_id = str(self.args["TEST_ID"]) if "TEST_ID" in self.args else None
         if test_id is not None:
             f = open("out/bts-test."+test_id+".json", 'w')
             f.write(self.tr.json())
