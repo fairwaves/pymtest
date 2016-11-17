@@ -475,6 +475,7 @@ def test_burst_power_peak(kwargs):
     ''' Check output power level '''
     return kwargs["CMD"].ask_peak_power()
 
+
 @test_checker_decorator("burst_power_peak_wait",
                         INFO="Wait for TRX output power (dBm)",
                         CHECK=test_val_checker(TEST_OK))
@@ -904,7 +905,7 @@ def cmd57_configure(cmd, arfcn):
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
     arfcnset = cmd.ask_bts_ccch_arfcn()
-    print ("ARFCN=%d NET=%s" % (arfcnset, cmd.ask_network_type()))
+    #print ("ARFCN=%d NET=%s" % (arfcnset, cmd.ask_network_type()))
     return arfcnset
 
 
@@ -931,7 +932,7 @@ def test_configure_cmd57(kwargs):
                         INFO="Syncronize CMD57 with the DUT",
                         CHECK=test_val_checker(TEST_OK))
 def run_tch_sync(kwargs):
-    print("Starting Tx tests.")
+    #print("Starting Tx tests.")
 
     # Make sure we start in idle mode
     kwargs["CMD"].switch_to_idle()
@@ -950,7 +951,7 @@ def run_tch_sync(kwargs):
 
 
 def run_bts_tests(kwargs):
-    print("Starting BTS tests.")
+    #print("Starting BTS tests.")
 
     # Stop osmo-trx to unlock UmTRX
     kwargs["BTS"].osmo_trx_stop()
@@ -979,7 +980,7 @@ def run_bts_tests(kwargs):
 
 
 def run_cmd57_info(kwargs):
-    print("Collecting CMD57 information.")
+    #print("Collecting CMD57 information.")
 
     # Collect useful information about the CMD57
     test_tester_id(kwargs)
@@ -988,7 +989,7 @@ def run_cmd57_info(kwargs):
 
 
 def run_tx_tests(kwargs):
-    print("Starting Tx tests.")
+    #print("Starting Tx tests.")
 
     # Burst power measurements
     test_burst_power_avg(kwargs)
@@ -1016,7 +1017,7 @@ def run_tx_tests(kwargs):
 
 
 def run_ber_tests(kwargs):
-    print("Starting BER tests.")
+    #print("Starting BER tests.")
 
     test_ber_configure(kwargs)
 
@@ -1113,5 +1114,12 @@ def check_hw_band(kwargs):
                     dut, arfcn, dut_checks["hw_band"]))
         return False
     return True
+
+
+@test_checker_decorator("connect_rf_to_cmd57",
+                        INFO="UI interactions to reconnect CMD57",
+                        CHECK=test_bool_checker())
+def connect_rf_to_cmd57(kwargs):
+    return kwargs["UI"].ask("Connect CMD57 to the TRX%s." % str(kwargs.get("CHAN", "")))
 
 

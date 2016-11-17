@@ -32,6 +32,7 @@
     name: tx_tests
     scope: TRX{{CHAN}}
     testsuites:
+        - connect_rf_to_cmd57:
         - run_tch_sync:
             abort_bundle_on_failure: True
             args:
