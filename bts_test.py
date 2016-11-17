@@ -112,7 +112,7 @@ class ConsoleTestResults(TestResults):
             print ("")
 
 class ConsoleUI:
-    def ask(text):
+    def ask(self, text):
         if ABORT_EXECUTION:
              print ("Abort ui '%s'" % text)
              return False

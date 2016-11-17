@@ -96,7 +96,7 @@ class TestResults(metaclass=ABCMeta):
         except:
             pass
         self._get_scope_subtree()[ti.testname] = (t, result, value)
-        self.print_result(t, path, ti, result, value, old_result, old_value, delta)
+        self.print_result(t, path, ti, result, value, old_result, old_value, delta, None)
 
         return result
 

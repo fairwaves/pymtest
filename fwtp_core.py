@@ -63,7 +63,7 @@ def test_substr_checker(okstr):
                                else TEST_FAIL
 
 class TestSuiteConfig:
-    DECORATOR_DEFAULT = lambda path, ti, args:  args["TR"].check_test_result(path, ti, ti.func(args), args)
+    DECORATOR_DEFAULT = lambda path, ti, args:  args["TR"].check_test_result(path, ti, ti.func(args), **args)
     KNOWN_TESTS_DESC  = {}
     CALLER_PATH = "/"
 
