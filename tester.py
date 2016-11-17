@@ -53,13 +53,8 @@ class MainWindowImpl(QMainWindow, main_form):
         self.started = False
         self.tests = {}
         self.tests_debug = True
-        #items = self.cbHosts.items()
-        #items.append("manual")
-        #items.append("local")
         self.cbHosts.addItems(["manual", "local"])
         self.cbDevice.clear()
-
-#        self.cbDevice.addItems([ i for i in bts_params.HARDWARE_LIST.keys() ])
 
     def enable_controls(self, en):
         self.listWidget.setEnabled(en)
@@ -76,12 +71,13 @@ class MainWindowImpl(QMainWindow, main_form):
     @pyqtSlot()
     def on_btStartStop_clicked(self):
         if self.started:
+            self.aborted = True
             self.started = False
-            self.aborted = False
             self.on_stop()
             self.btStartStop.setText("Start")
             self.enable_controls(True)
         else:
+            self.aborted = False
             self.started = True
             self.btStartStop.setText("Stop")
             self.enable_controls(False)
@@ -191,148 +187,6 @@ class MainWindowImpl(QMainWindow, main_form):
             res = fwtp_core.TEST_ABORTED
             self.tr.set_test_result(path, ti, res)
         return res
-
-#    def create_bts(self):
-#        bts_ip = self.cbHosts.currentText()
-#        if bts_ip == "local":
-#            bts = bts_test.BtsControlLocal('/tmp/bts-test', 'pkexec')
-#        elif bts_ip == "manual":
-#            bts = bts_test.BtsControlLocalManual('/tmp/bts-test', 'pkexec')
-#        else:
-#            bts = bts_test.BtsControlSsh(bts_ip, 22, 'fairwaves', 'fairwaves')
-
-#        return bts
-
-#    def on_start(self):
-#        QApplication.processEvents()
-#        self.tests = { self.listWidget.item(i).text():
-#            self.listWidget.item(i).checkState() == Qt.Checked for i in range(len(bts_test.TEST_NAMES)) }
-
-#        dut = self.cbDevice.currentText()
-#        dut_checks = bts_params.HARDWARE_LIST[dut]
-#        arfcn=int(self.spArfcn.value())
-
-#        if dut_checks["hw_band"] is not None and not bts_test.check_arfcn(arfcn, dut_checks["hw_band"]):
-#            QMessageBox.question(self, 'ARFCN Error',
-#                                "Hardware %s doesn't support %d ARFCN in band %s" % (
-#                                    dut, arfcn, dut_checks["hw_band"]), QMessageBox.Ok)
-#            self.test_ok = False
-#            return
-
-#        # Initialize test results structure
-#        self.func_dict = bts_test.init_test_checks(dut_checks)
-#        self.tr = MyTestResults(self.on_test_result, self.on_test_progress, self.func_dict)
-
-#        self.txConsole.appendPlainText("Establishing connection with the BTS.\n")
-#        self.bts = self.create_bts()
-
-#        # CMD57 has sloppy time synchronization, so burst timing can drift
-#        # by a few symbols
-#        self.bts.bts_set_maxdly(10)
-#        self.bts.bts_led_blink(2)
-#        self.tr.set_test_scope("system")
-
-#        #bts_test.get_band(args.arfcn)run_bts_tests(tr, get_band(args.arfcn))
-
-#        QApplication.processEvents()
-
-#        bts_test.tr = self.tr
-#        bts_test.bts = self.bts
-#        bts_test.run_bts_tests(self.tr, bts_test.get_band(arfcn))
-#        QApplication.processEvents()
-
-#        #
-#        #   CMD57 tests
-#        #
-#        # Establish connection with CMD57 and configure it
-#        self.txConsole.appendPlainText("Establishing connection with the CMD57.")
-#        cmd = bts_test.cmd57_init(self.lnPort.text())
-#        if dut.startswith("UmTRX"):
-#            self.txConsole.appendPlainText("Set configuration Input 1; Output 2")
-#            cmd.set_io_used('I1O2')
-#        else:
-#            self.txConsole.appendPlainText("Set configuration Input 1; Output 1")
-#            cmd.set_io_used('I1O1')
-
-#        bts_test.set_band_using_arfcn(cmd, arfcn)
-
-#        QApplication.processEvents()
-#        cmd.switch_to_man_bidl()
-#        bts_test.cmd57_configure(cmd, arfcn)
-
-#        QApplication.processEvents()
-
-#        channels = []
-#        if self.cbCh1.isChecked(): channels.append(1)
-#        if self.cbCh2.isChecked(): channels.append(2)
-
-#        bts_test.cmd = cmd
-
-#        try:
-#            for trx in channels:
-#                QApplication.processEvents()
-#                resp = self.ui_ask("Connect CMD57 to the TRX%d." % trx)
-#                if resp:
-#                    self.tr.set_test_scope("TRX%d" % trx)
-#                    self.txConsole.appendPlainText("TRX set: %s" % str(self.bts.trx_set_primary(trx)))
-#                    QApplication.processEvents()
-#                    self.bts.osmo_trx_restart()
-#                    QApplication.processEvents()
-#                    bts_test.run_cmd57_info()
-#                    QApplication.processEvents()
-#                    res = bts_test.run_tch_sync()
-#                    if res == bts_test.TEST_OK:
-#                        bts_test.run_tx_tests()
-#                        QApplication.processEvents()
-#                        ber_scope = "TRX%d/BER" % trx
-#                        self.tr.set_test_scope(ber_scope)
-#                        QApplication.processEvents()
-#                        bts_test.run_ber_tests(dut)
-#                        QApplication.processEvents()
-#                        if self.tr.get_test_result("ber_test_result")[1] != bts_test.TEST_OK:
-#                            self.txConsole.appendPlainText("Re-running BER test")
-#                            QApplication.processEvents()
-#                            self.tr.clear_test_scope(ber_scope)
-#                            QApplication.processEvents()
-#                            bts_test.run_ber_tests(dut)
-#                        if not dut.startswith("UmTRX"):
-#                            self.tr.set_test_scope("TRX%d/power" % trx)
-#                            QApplication.processEvents()
-#                            bts_test.test_power_vswr_vga2(cmd, self.bts, trx, self.tr)
-#                            QApplication.processEvents()
-#                            bts_test.test_power_vswr_dcdc(cmd, self.bts, trx, self.tr, dut_checks)
-#                            QApplication.processEvents()
-#                            resp = self.ui_ask("Disconnect cable from the TRX%d." % trx)
-#                            QApplication.processEvents()
-#                            if resp:
-#                                bts_test.test_vswr_vga2(self.bts, trx, self.tr)
-#        finally:
-#            # switch back to TRX1
-#            QApplication.processEvents()
-#            self.bts.trx_set_primary(1)
-#            self.bts.osmo_trx_restart()
-#            self.bts.bts_led_on()
-#            QApplication.processEvents()
-
-#            sm = self.tr.summary()
-#            for res in sm:
-#                self.txConsole.appendHtml("<pre>%s: %2d</pre>" % (HTML_RESULT_MAPS[res], sm[res]))
-
-#            failed = sm.setdefault(bts_test.TEST_NA, 0) + sm.setdefault(bts_test.TEST_ABORTED, 0) + sm.setdefault(bts_test.TEST_FAIL, 0)
-#            if failed > 0:
-#                self.txConsole.appendHtml("<br>%s<h1>WARNING! NOT ALL TEST PASSED!</h1>%s<br>" % get_html_color_tags("red"))
-#                if self.started:
-#                    self.test_ok = False
-#                else:
-#                    return #Don't wirte JSON in case of abort
-
-#            #
-#            #   Dump report to a JSON file
-#            #
-#            test_id = str(self.tr.get_test_result("test_id", "system")[2])
-#            f = open("out/bts-test."+test_id+".json", 'w')
-#            f.write(self.tr.json())
-#            f.close()
 
     def on_start(self):
         QApplication.processEvents()

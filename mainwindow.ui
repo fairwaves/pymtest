@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>971</width>
+    <width>1087</width>
     <height>679</height>
    </rect>
   </property>
@@ -82,7 +82,7 @@
             <number>9999</number>
            </property>
            <property name="value">
-            <number>74</number>
+            <number>0</number>
            </property>
           </widget>
          </item>
@@ -121,7 +121,14 @@
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="cbDevice"/>
+          <widget class="QComboBox" name="cbDevice">
+           <property name="editable">
+            <bool>true</bool>
+           </property>
+           <property name="currentText">
+            <string>OC</string>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QLabel" name="label_3">
@@ -132,9 +139,23 @@
          </item>
          <item>
           <widget class="QComboBox" name="cbHosts">
+           <property name="minimumSize">
+            <size>
+             <width>200</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="editable">
             <bool>true</bool>
            </property>
+           <property name="currentText">
+            <string>192.168.88.242</string>
+           </property>
+           <item>
+            <property name="text">
+             <string>192.168.88.242</string>
+            </property>
+           </item>
           </widget>
          </item>
          <item>
