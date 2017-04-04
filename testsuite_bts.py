@@ -3,7 +3,7 @@
 
 import atexit
 from scpi.devices import cmd57_console as cmd57
-from scpi.errors import TimeoutError
+# from scpi.errors import TimeoutError
 
 from fwtp_core import *
 import time
@@ -12,10 +12,16 @@ import time
 #  DUT connection
 ###############################
 import paramiko
-import os, sys, select  # for stdin flush
 import subprocess
+import re
 
-class BtsControlBase:
+from abc import ABCMeta, abstractmethod
+
+
+class BtsControlBase(metaclass=ABCMeta):
+    """
+    Base class for the BTS control
+    """
 
     helpers = ["obscvty.py", "osmobts-en-loopback.py",
                "osmobts-set-maxdly.py", "osmobts-set-slotmask.py",
@@ -27,148 +33,188 @@ class BtsControlBase:
 
     locals = ["test_umtrx_reset.py", "test_umtrx_gps_time.py"]
 
+    @abstractmethod
+    def _exec(self, cmd_str):
+        """ Execute command on the DUT """
+        pass
+
+    @abstractmethod
+    def _copy_file_list(self, dir_from, flie_list, dir_to):
+        """
+        Copy local files to the DUT
+        :param dir_from: Directory to copy files from
+        :param flie_list: Files to copy
+        :param dir_to: Directory on the DUT to copy files on
+        :return: None
+        """
+        pass
+
+    @abstractmethod
+    def _exec_stdout_b(self, cmd_str):
+        """
+        Execute command and get array of lines of bytes from stdout
+        :param cmd_str: command to execute
+        :return: array of lines of bytes
+        """
+        return []
+
+    @abstractmethod
+    def _exec_stdout_stderr_b(self, cmd_str):
+        """
+        Execute command and get array of lines of bytes from stdout + stderr
+        :param cmd_str: command to execute
+        :return: array of lines of bytes
+        """
+        return []
+
     def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
+        """" Connect to a BTS and prepare it for testing """
         # Copy helper scripts to the BTS
         self.tmpdir = tmpdir
-        self._exec_stdout('mkdir -p '+self.tmpdir)
+        self._exec_stdout('mkdir -p ' + self.tmpdir)
         self._copy_file_list('helper/', self.helpers, self.tmpdir)
         self._copy_file_list('./', self.locals, self.tmpdir)
         self.sudo = sudopkg
 
-    def _tee(self, stream, filename):
-        ''' Write lines from the stream to the file and return the lines '''
-        lines = [  i if type(i) is str else i.decode("utf-8")  for i in stream.readlines() ]
+    @staticmethod
+    def _tee(stream, filename):
+        """ Write lines from the stream to the file and return the lines """
+        lines = [i if type(i) is str else i.decode("utf-8")
+                 for i in stream.readlines()]
         f = open(filename, 'w')
         f.writelines(lines)
         f.close()
         return lines
 
     def get_uname(self):
-        ''' Get uname string '''
+        """ Get uname string """
         return self._exec_stdout('uname -a')[0].strip()
 
     def trx_set_primary(self, num):
-        ''' Set primary TRX '''
-        print ("Setting primary TRX to TRX%d" % num)
+        """ Set primary TRX """
+        print("Setting primary TRX to TRX%d" % num)
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             '%s python osmo-trx-primary-trx.py %d' % (self.sudo, num))
 
     def bts_en_loopback(self):
-        ''' Enable loopbak in the BTS '''
-        print ("Enabling BTS loopback")
+        """ Enable loopbak in the BTS """
+        print("Enabling BTS loopback")
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-en-loopback.py')
 
     def bts_set_slotmask(self, ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7):
-        ''' Set BTS TRX0 slotmask '''
-        print ("Setting BTS slotmask")
+        """ Set BTS TRX0 slotmask """
+        print("Setting BTS slotmask")
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-slotmask.py %d %d %d %d %d %d %d %d'
             % (ts0, ts1, ts2, ts3, ts4, ts5, ts6, ts7))
 
     def umtrx_get_gps_time(self):
-        '''Obtain time diff GPS vs system'''
+        """Obtain time diff GPS vs system"""
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
-            '%s python3 test_umtrx_gps_time.py' % (self.sudo))
+            '%s python3 test_umtrx_gps_time.py' % self.sudo)
 
     def bts_get_hw_config(self, param):
-        ''' Get hardware configuration parameter '''
+        """ Get hardware configuration parameter """
         return self._exec_stdout_stderr(
-             'cat /etc/osmocom/hardware.conf | grep %s | cut -d= -f2' % param)
+            'cat /etc/osmocom/hardware.conf | grep %s | cut -d= -f2' % param)
 
     def bts_set_maxdly(self, val):
-        ''' Set BTS TRX0 max timing advance '''
+        """ Set BTS TRX0 max timing advance """
         print("BTS: setting max delay to %d." % val)
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python osmobts-set-maxdly.py %d' % val)
 
     def bts_led_blink(self, period=1):
-        ''' Continously blink LED '''
+        """ Continously blink LED """
         return self._exec_stdout_stderr(
-             '%s umsite-led-blink_%dhz.sh' % (self.sudo, period))
+            '%s umsite-led-blink_%dhz.sh' % (self.sudo, period))
 
     def bts_led_on(self, on=1):
-        ''' On or off system LED'''
+        """ On or off system LED"""
         return self._exec_stdout_stderr(
-             '%s umsite-led-on-%s.sh' % ( self.sudo, 'on' if on else 'off'))
+            '%s umsite-led-on-%s.sh' % (self.sudo, 'on' if on else 'off'))
 
     def bts_shutdown(self):
-        ''' Shutdown BTS host '''
+        """ Shutdown BTS host """
         return self._exec_stdout_stderr(
-            '%s shutdown -h now' % (self.sudo))
+            '%s shutdown -h now' % self.sudo)
 
     def umtrx_reset_test(self):
+        """ Do umtrx reset and get console output form it """
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             '%s python3 test_umtrx_reset.py' % self.sudo)
 
     def umtrx_set_dcdc_r(self, val):
-        ''' Set UmTRX DCDC control register value '''
-#        print("UmTRX: setting DCDC control register to %d." % val)
+        """ Set UmTRX DCDC control register value """
+        # print("UmTRX: setting DCDC control register to %d." % val)
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_set_dcdc_r.py %d' % val)
 
     def umtrx_set_tx_vga2(self, chan, val):
-        ''' Set UmTRX Tx VGA2 gain '''
-#        print("UmTRX: setting UmTRX Tx VGA2 gain for chan %d to %d."
-#              % (chan, val))
+        """ Set UmTRX Tx VGA2 gain """
+        # print("UmTRX: setting UmTRX Tx VGA2 gain for chan %d to %d." %
+        #       (chan, val))
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_lms.py --lms %d --lms-set-tx-vga2-gain %d'
             % (chan, val))
 
     def umtrx_get_vswr_sensors(self, chan):
-        ''' Read UmTRX VPR and VPF sensors '''
+        """ Read UmTRX VPR and VPF sensors """
         lines = self._exec_stdout(
             'cd ' + self.tmpdir + '; ' +
             'python umtrx_get_vswr_sensors.py')
         res = [float(x.strip()) for x in lines]
-        start = (chan-1)*2
-        return res[start:start+2]
+        start = (chan - 1) * 2
+        return res[start:start + 2]
 
     def start_runit_service(self, service):
-        ''' Start a runit controlled service '''
+        """ Start a runit controlled service """
         print("Starting '%s' service." % service)
         return self._exec_stdout_stderr(
             '%s sv start %s' % (self.sudo, service))
         # TODO: Check result
 
     def stop_runit_service(self, service):
-        ''' Stop a runit controlled service '''
+        """ Stop a runit controlled service """
         print("Stopping '%s' service." % service)
         return self._exec_stdout_stderr(
             '%s sv stop %s' % (self.sudo, service))
         # TODO: Check result
 
     def restart_runit_service(self, service):
-        ''' Restart a runit controlled service '''
+        """ Restart a runit controlled service """
         print("Restarting '%s' service." % service)
         return self._exec_stdout_stderr(
             '%s sv restart %s' % (self.sudo, service))
         # TODO: Check result
 
     def osmo_trx_start(self):
+        """ Start omso-trx service """
         return self.start_runit_service("osmo-trx")
 
     def osmo_trx_stop(self):
+        """ Stop osmo-trx service """
         return self.stop_runit_service("osmo-trx")
 
     def osmo_trx_restart(self):
+        """ Restart osmo-trx service """
         return self.restart_runit_service("osmo-trx")
 
     def get_umtrx_eeprom_val(self, name):
-        ''' Read UmTRX serial from EEPROM.
-            All UHD apps should be stopped at the time of reading. '''
+        """ Read UmTRX serial from EEPROM.
+            All UHD apps should be stopped at the time of reading. """
         lines = self._exec_stdout_stderr(
             '/usr/lib/uhd/utils/usrp_burn_mb_eeprom --values "serial"')
-        eeprom_val = re.compile(r'    EEPROM \["'+name+r'"\] is "(.*)"')
+        eeprom_val = re.compile(r' {4}EEPROM \["' + name + r'"\] is "(.*)"')
         for s in lines:
             match = eeprom_val.match(s)
             if match is not None:
@@ -176,17 +222,18 @@ class BtsControlBase:
         return None
 
     def umtrx_autocalibrate(self, preset, filename_stdout, filename_stderr):
-        ''' Run UmTRX autocalibration for the selected band.
+        """ Run UmTRX autocalibration for the selected band.
             preset - One or more of the following space seprated values:
                      GSM850, EGSM900 (same as GSM900),
                      GSM1800 (same as DCS1800), GSM1900 (same as PCS1900)
-            All UHD apps should be stopped at the time of executing. '''
+            All UHD apps should be stopped at the time of executing. """
         stdin, stdout, stderr = self._exec(
             '%s umtrx_auto_calibration %s' % (self.sudo, preset))
         # TODO: Check result
         lines = self._tee(stdout, filename_stdout)
         self._tee(stderr, filename_stderr)
-        line_re = re.compile(r'Calibration type .* side . from .* to .*: ([A-Z]+)')
+        line_re = re.compile(
+            r'Calibration type .* side . from .* to .*: ([A-Z]+)')
         if len(lines) == 0:
             return False
 
@@ -198,29 +245,39 @@ class BtsControlBase:
         return True
 
     def _exec_stdout(self, cmd_str):
+        """ return array of string from execution _exec_stdout_b """
         barrs = self._exec_stdout_b(cmd_str)
-        print (barrs)
-        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
+        print(barrs)
+        return [i if type(i) is str else i.decode("utf-8") for i in barrs]
 
     def _exec_stdout_stderr(self, cmd_str):
+        """ return array of string from execution _exec_stdout_stderr_b """
         barrs = self._exec_stdout_stderr_b(cmd_str)
-        print (barrs)
-        return [ i if type(i) is str else i.decode("utf-8") for i in barrs ]
+        print(barrs)
+        return [i if type(i) is str else i.decode("utf-8") for i in barrs]
+
 
 class BtsControlSsh(BtsControlBase):
 
     def __init__(self, bts_ip, port=22, username='', password='',
                  tmpdir='/tmp/bts-test'):
-        ''' Connect to a BTS and prepare it for testing '''
+        """ Connect to a BTS and prepare it for testing """
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(bts_ip, port=port, username=username, password=password, timeout=2)
+        self.ssh.connect(bts_ip, port=port, username=username,
+                         password=password, timeout=2)
         BtsControlBase.__init__(self, tmpdir)
+
+    def _exec_stdout_b(self, cmd_str):
+        raise Exception('Incorrect usage!')
+
+    def _exec_stdout_stderr_b(self, cmd_str):
+        raise Exception('Incorrect usage!')
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         sftp = self.ssh.open_sftp()
         for f in flie_list:
-            sftp.put(dir_from+f, dir_to+'/'+f)
+            sftp.put(dir_from + f, dir_to + '/' + f)
         sftp.close()
 
     def _exec(self, cmd_str):
@@ -236,15 +293,18 @@ class BtsControlSsh(BtsControlBase):
 
 
 class BtsControlLocalManual(BtsControlBase):
+    """
+    Local manual control class
+    """
 
     def __init__(self, ui, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
+        """ Connect to a BTS and prepare it for testing """
         BtsControlBase.__init__(self, tmpdir, sudopkg)
         self.ui = ui
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         for f in flie_list:
-            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
+            subprocess.check_call(["cp", dir_from + f, dir_to + '/' + f])
 
     def _exec(self, cmd_str):
         p = subprocess.Popen(cmd_str,
@@ -252,7 +312,7 @@ class BtsControlLocalManual(BtsControlBase):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True)
-        return (p.stdin, p.stdout, p.stderr)
+        return p.stdin, p.stdout, p.stderr
 
     def _exec_stdout_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
@@ -278,14 +338,17 @@ class BtsControlLocalManual(BtsControlBase):
 
 
 class BtsControlLocal(BtsControlBase):
+    """
+    Local sv-based service BTS control
+    """
 
     def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
-        ''' Connect to a BTS and prepare it for testing '''
+        """ Connect to a BTS and prepare it for testing """
         BtsControlBase.__init__(self, tmpdir, sudopkg)
 
     def _copy_file_list(self, dir_from, flie_list, dir_to):
         for f in flie_list:
-            subprocess.check_call(["cp", dir_from+f, dir_to+'/'+f])
+            subprocess.check_call(["cp", dir_from + f, dir_to + '/' + f])
 
     def _exec(self, cmd_str):
         p = subprocess.Popen(cmd_str,
@@ -293,7 +356,7 @@ class BtsControlLocal(BtsControlBase):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True)
-        return (p.stdin, p.stdout, p.stderr)
+        return p.stdin, p.stdout, p.stderr
 
     def _exec_stdout_b(self, cmd_str):
         p = subprocess.Popen(cmd_str,
@@ -328,7 +391,8 @@ def test_bts_connection(kwargs):
     elif bts_ip == "manual":
         bts = BtsControlLocalManual(kwargs["UI"])
     else:
-        bts = BtsControlSsh(bts_ip, 22, dut_checks['login'], dut_checks['password'])
+        bts = BtsControlSsh(
+            bts_ip, 22, dut_checks['login'], dut_checks['password'])
 
     kwargs["BTS"] = bts
     return str(bts)
@@ -337,25 +401,30 @@ def test_bts_connection(kwargs):
 #   non-CMD57 based tests
 ###############################
 
+
 @test_checker_decorator("bts_hw_model",
                         INFO="BTS hardware model",
-                        CHECK=test_substr_checker(evaluate_dut_check("hw_model")))
+                        CHECK=test_substr_checker(
+                            evaluate_dut_check("hw_model")))
 def bts_hw_model(kwargs):
     return kwargs["BTS"].bts_get_hw_config('HW_MODEL')[0].strip('\n')
+
 
 @test_checker_decorator("bts_hw_band",
                         INFO="BTS hardware band")
 def bts_hw_band(kwargs):
     return kwargs["BTS"].bts_get_hw_config('BAND')[0].strip('\n')
 
+
 @test_checker_decorator("bts_umtrx_ver",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="BTS umtrx ver")
 def bts_umtrx_ver(kwargs):
     return kwargs["BTS"].bts_get_hw_config('UMTRX_VER')[0].strip('\n')
 
+
 @test_checker_decorator("umtrx_reset_test",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="UmTRX Reset and Safe firmware loading test",
                         CHECK=test_bool_checker())
 def umtrx_reset_test(kwargs):
@@ -363,8 +432,9 @@ def umtrx_reset_test(kwargs):
     kwargs["TR"].output_progress(str(lns))
     return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
 
+
 @test_checker_decorator("umtrx_gps_time",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="UmTRX GPS time",
                         CHECK=test_bool_checker())
 def umtrx_gps_time(kwargs):
@@ -381,8 +451,22 @@ def bts_read_uname(kwargs):
     return bts_uname
 
 
+@test_checker_decorator("set_primary_trx",
+                        INFO="Set Primary TRX for osmo-trx")
+def set_primary_trx(kwargs):
+    chan = kwargs["CHAN"]
+    kwargs["BTS"].trx_set_primary(chan)
+    return chan
+
+
+@test_checker_decorator("restart_osmo_trx",
+                        INFO="Restart osmo-trx service")
+def restart_osmo_trx(kwargs):
+    return kwargs["BTS"].osmo_trx_restart()
+
+
 @test_checker_decorator("umtrx_serial",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="UmTRX serial number")
 def bts_read_umtrx_serial(kwargs):
     umtrx_serial = kwargs["BTS"].get_umtrx_eeprom_val("serial")
@@ -392,39 +476,40 @@ def bts_read_umtrx_serial(kwargs):
 
 @test_checker_decorator("test_id")
 def gen_test_id(kwargs):
-    ''' Generates a unique test ID '''
+    """ Generates a unique test ID """
     tr = kwargs["TR"]
     uname_res = kwargs["BTS_UNAME"]
     serial_res = kwargs["UMTRX_SERIAL"]
     name = uname_res.split()[1]
     timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
-    fixed_test_id = name+'_'+serial_res
+    fixed_test_id = name + '_' + serial_res
     tr.load_prev_data(fixed_test_id)
-    test_id = fixed_test_id+'_'+timestr
+    test_id = fixed_test_id + '_' + timestr
     kwargs["TEST_ID"] = test_id
     return test_id
 
+
 @test_checker_decorator("test_id2")
 def gen_test_id2(kwargs):
-    ''' Generates a unique test ID '''
+    """ Generates a unique test ID """
     tr = kwargs["TR"]
     uname_res = kwargs["BTS_UNAME"]
-    tr.output_progress ("DUT: uname: '%s'" % uname_res)
+    tr.output_progress("DUT: uname: '%s'" % uname_res)
     name = uname_res.split()[1]
     timestr = time.strftime("%Y-%m-%d-%H%M%S", time.localtime(time.time()))
     fixed_test_id = name
     tr.load_prev_data(fixed_test_id)
-    test_id = fixed_test_id+'_'+timestr
+    test_id = fixed_test_id + '_' + timestr
     kwargs["TEST_ID"] = test_id
     return test_id
 
+
 @test_checker_decorator("umtrx_autocalibrate",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="UmTRX autocalibration",
                         CHECK=test_bool_checker())
 def bts_umtrx_autocalibrate(bts, preset, filename_stdout, filename_stderr):
     return bts.umtrx_autocalibrate(preset, filename_stdout, filename_stderr)
-
 
 
 ###############################
@@ -445,8 +530,9 @@ def test_cmd57_init(kwargs):
                         INFO="Tester device name")
 def test_tester_id(kwargs):
     id_str = kwargs["CMD"].identify()
-    name = id_str[0]+' '+id_str[1]
+    name = id_str[0] + ' ' + id_str[1]
     return name
+
 
 @test_checker_decorator("tester_serial",
                         INFO="Tester serial")
@@ -454,11 +540,13 @@ def test_tester_id(kwargs):
     id_str = kwargs["CMD"].identify()
     return id_str[2]
 
+
 @test_checker_decorator("tester_version",
                         INFO="Tester veersion")
 def test_tester_id(kwargs):
     id_str = kwargs["CMD"].identify()
     return id_str[3]
+
 
 @test_checker_decorator("tester_options",
                         INFO="Tester installed options")
@@ -469,10 +557,10 @@ def test_tester_options(kwargs):
 @test_checker_decorator("burst_power_peak",
                         INFO="TRX output power (dBm)",
                         CHECK=test_minmax_checker(
-                                evaluate_dut_check("burst_power_peak_min"),
-                                evaluate_dut_check("burst_power_peak_max")))
+                            evaluate_dut_check("burst_power_peak_min"),
+                            evaluate_dut_check("burst_power_peak_max")))
 def test_burst_power_peak(kwargs):
-    ''' Check output power level '''
+    """ Check output power level """
     return kwargs["CMD"].ask_peak_power()
 
 
@@ -480,11 +568,11 @@ def test_burst_power_peak(kwargs):
                         INFO="Wait for TRX output power (dBm)",
                         CHECK=test_val_checker(TEST_OK))
 def test_burst_power_peak_wait(kwargs):
-    ''' Wait for output power level '''
+    """ Wait for output power level """
     timeout = kwargs["TIMEOUT"] if "TIMEOUT" in kwargs else 20
     res = TEST_NA
     t = time.time()
-    while res != TEST_OK and time.time()-t < timeout:
+    while res != TEST_OK and time.time() - t < timeout:
         res = test_burst_power_peak(kwargs)
         if res == TEST_ABORTED:
             return res
@@ -496,7 +584,7 @@ def test_burst_power_peak_wait(kwargs):
                         INFO="BCCH detected",
                         CHECK=test_bool_checker())
 def test_bcch_presence(kwargs):
-    ''' Check BCCH presence '''
+    """ Check BCCH presence """
     cmd = kwargs["CMD"]
     cmd.switch_to_man_bbch()
     return cmd.ask_dev_state() == "BBCH"
@@ -509,8 +597,8 @@ def test_bcch_presence(kwargs):
 @test_checker_decorator("burst_power_avg",
                         INFO="Burst avg power (dBm)",
                         CHECK=test_minmax_checker(
-                                evaluate_dut_check("burst_power_avg_min"),
-                                evaluate_dut_check("burst_power_avg_max")))
+                            evaluate_dut_check("burst_power_avg_min"),
+                            evaluate_dut_check("burst_power_avg_max")))
 def test_burst_power_avg(kwargs):
     return kwargs["CMD"].ask_burst_power_avg()
 
@@ -523,7 +611,8 @@ def test_burst_power_array(kwargs):
 
 @test_checker_decorator("freq_error",
                         INFO="Frequency error (Hz)",
-                        CHECK=test_abs_checker(evaluate_dut_check("freq_error")))
+                        CHECK=test_abs_checker(
+                            evaluate_dut_check("freq_error")))
 def test_freq_error(kwargs):
     return kwargs["CMD"].ask_freq_err()
 
@@ -537,8 +626,8 @@ def test_phase_err_array(kwargs):
 @test_checker_decorator("phase_err_pk",
                         INFO="Phase error peak (deg)",
                         CHECK=test_minmax_checker(
-                                evaluate_dut_check("phase_err_pk_min"),
-                                evaluate_dut_check("phase_err_pk_max")))
+                            evaluate_dut_check("phase_err_pk_min"),
+                            evaluate_dut_check("phase_err_pk_max")))
 def test_phase_err_pk(kwargs):
     return kwargs["CMD"].fetch_phase_err_pk()
 
@@ -546,8 +635,8 @@ def test_phase_err_pk(kwargs):
 @test_checker_decorator("phase_err_avg",
                         INFO="Phase error avg (deg)",
                         CHECK=test_minmax_checker(
-                                evaluate_dut_check("phase_err_avg_min"),
-                                evaluate_dut_check("phase_err_avg_max")))
+                            evaluate_dut_check("phase_err_avg_min"),
+                            evaluate_dut_check("phase_err_avg_max")))
 def test_phase_err_avg(kwargs):
     return kwargs["CMD"].fetch_phase_err_rms()
 
@@ -563,13 +652,15 @@ def test_spectrum_modulation_offsets(kwargs):
 
 
 @test_checker_decorator("spectrum_modulation_tolerance_abs",
-                        INFO="Modulation spectrum absolute tolerance mask (dBm)")
+                        INFO="Modulation spectrum absolute " +
+                             "tolerance mask (dBm)")
 def test_spectrum_modulation_tolerance_abs(kwargs):
     return kwargs["CMD"].ask_spectrum_modulation_tolerance_abs()
 
 
 @test_checker_decorator("spectrum_modulation_tolerance_rel",
-                        INFO="Modulation spectrum relative tolerance mask (dBc)")
+                        INFO="Modulation spectrum relative " +
+                             "tolerance mask (dBc)")
 def test_spectrum_modulation_tolerance_rel(kwargs):
     return kwargs["CMD"].ask_spectrum_modulation_tolerance_rel()
 
@@ -594,13 +685,15 @@ def test_spectrum_switching_offsets(kwargs):
 
 
 @test_checker_decorator("spectrum_switching_tolerance_abs",
-                        INFO="Switching spectrum absolute tolerance mask (dBm)")
+                        INFO="Switching spectrum absolute tolerance " +
+                             "mask (dBm)")
 def test_spectrum_switching_tolerance_abs(kwargs):
     return kwargs["CMD"].ask_spectrum_switching_tolerance_abs()
 
 
 @test_checker_decorator("spectrum_switching_tolerance_rel",
-                        INFO="Switching spectrum relative tolerance mask (dBc)")
+                        INFO="Switching spectrum relative tolerance mask " +
+                             "(dBc)")
 def test_spectrum_switching_tolerance_rel(kwargs):
     return kwargs["CMD"].ask_spectrum_switching_tolerance_rel()
 
@@ -626,7 +719,6 @@ def test_spectrum_switching_match(kwargs):
                         CHECK=test_ignore_checker())
 def test_ber_configure(kwargs):
     cmd = kwargs["CMD"]
-    dut = kwargs["DUT"]
     dut_checks = kwargs["DUT_CHECKS"]
     if "ber_unused_ts_power" in kwargs:
         ber_unused_ts_power = kwargs["ber_unused_ts_power"]
@@ -644,7 +736,8 @@ def test_ber_configure(kwargs):
         ber_used_ts_power = -104
     cmd.set_ber_used_ts_power(ber_used_ts_power)
 
-    ber_test_num = dut_checks["ber_test_num"] if "ber_test_num" in dut_checks else 1
+    ber_test_num = dut_checks["ber_test_num"] if \
+        "ber_test_num" in dut_checks else 1
     return cmd.set_ber_test_num(ber_test_num)
 
 
@@ -788,20 +881,23 @@ def test_ber_crc_errors(kwargs):
 # Power calibration
 #
 
+
 UMSITE_TM3_VGA2_DEF = 22
 
+
 @test_checker_decorator("power_vswr_vga2",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="Power&VSWR vs VGA2")
 def test_power_vswr_vga2(kwargs):
     cmd = kwargs["CMD"]
     bts = kwargs["BTS"]
     chan = kwargs["CHAN"]
     tr = kwargs["TR"]
-    UMTRX_VGA2_DEF = kwargs["UMTRX_VGA2_DEF"] if "UMTRX_VGA2_DEF" in kwargs else UMSITE_TM3_VGA2_DEF
+    umtrx_vga2_def = kwargs["UMTRX_VGA2_DEF"] if \
+        "UMTRX_VGA2_DEF" in kwargs else UMSITE_TM3_VGA2_DEF
     try:
-        tr.output_progress ("Testing power&VSWR vs VGA2")
-        tr.output_progress ("VGA2\tPk power\tAvg power\tVPF\tVPR")
+        tr.output_progress("Testing power&VSWR vs VGA2")
+        tr.output_progress("VGA2\tPk power\tAvg power\tVPF\tVPR")
         res = []
         for vga2 in range(26):
             bts.umtrx_set_tx_vga2(chan, vga2)
@@ -820,20 +916,21 @@ def test_power_vswr_vga2(kwargs):
             tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         return res
     finally:
-        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
+        bts.umtrx_set_tx_vga2(chan, umtrx_vga2_def)
 
 
 @test_checker_decorator("vswr_vga2",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="VSWR vs VGA2")
 def test_vswr_vga2(kwargs):
     bts = kwargs["BTS"]
     chan = kwargs["CHAN"]
     tr = kwargs["TR"]
-    UMTRX_VGA2_DEF = kwargs["UMTRX_VGA2_DEF"] if "UMTRX_VGA2_DEF" in kwargs else UMSITE_TM3_VGA2_DEF
+    umtrx_vga2_def = kwargs["UMTRX_VGA2_DEF"] if \
+        "UMTRX_VGA2_DEF" in kwargs else UMSITE_TM3_VGA2_DEF
     try:
-        tr.output_progress ("Testing VSWR vs VGA2")
-        tr.output_progress ("VGA2\tVPF\tVPR")
+        tr.output_progress("Testing VSWR vs VGA2")
+        tr.output_progress("VGA2\tVPF\tVPR")
         res = []
         for vga2 in range(26):
             bts.umtrx_set_tx_vga2(chan, vga2)
@@ -848,11 +945,11 @@ def test_vswr_vga2(kwargs):
             tr.output_progress("%d\t%.2f\t%.2f" % res[-1])
         return res
     finally:
-        bts.umtrx_set_tx_vga2(chan, UMTRX_VGA2_DEF)
+        bts.umtrx_set_tx_vga2(chan, umtrx_vga2_def)
 
 
 @test_checker_decorator("power_vswr_dcdc",
-                        DUT=["UmTRX","UmSITE"],
+                        DUT=["UmTRX", "UmSITE"],
                         INFO="Power&VSWR vs DCDC control")
 def test_power_vswr_dcdc(kwargs):
     cmd = kwargs["CMD"]
@@ -861,10 +958,10 @@ def test_power_vswr_dcdc(kwargs):
     tr = kwargs["TR"]
     dut = kwargs["DUT_CHECKS"]
     try:
-        tr.output_progress ("Testing power&VSWR vs DCDC control")
-        tr.output_progress ("DCDC_R\tPk power\tAvg power\tVPF\tVPR")
+        tr.output_progress("Testing power&VSWR vs DCDC control")
+        tr.output_progress("DCDC_R\tPk power\tAvg power\tVPF\tVPR")
         res = []
-        for dcdc in range(dut["ddc_r_min"], dut["ddc_r_max"]+1):
+        for dcdc in range(dut["ddc_r_min"], dut["ddc_r_max"] + 1):
             bts.umtrx_set_dcdc_r(dcdc)
             power_pk = cmd.ask_peak_power()
             power_avg = cmd.ask_burst_power_avg()
@@ -872,7 +969,7 @@ def test_power_vswr_dcdc(kwargs):
             res.append((dcdc, power_pk, power_avg, vpf, vpr))
             tr.output_progress("%d\t%.1f\t%.1f\t%.2f\t%.2f" % res[-1])
         # Sweep from max to min to weed out temperature dependency
-        for dcdc in range(dut["ddc_r_max"], dut["ddc_r_min"]-1, -1):
+        for dcdc in range(dut["ddc_r_max"], dut["ddc_r_min"] - 1, -1):
             bts.umtrx_set_dcdc_r(dcdc)
             power_pk = cmd.ask_peak_power()
             power_avg = cmd.ask_burst_power_avg()
@@ -896,16 +993,15 @@ def test_enable_tch_loopback(kwargs):
     return kwargs["BTS"].bts_en_loopback()
 
 
-
 def cmd57_configure(cmd, arfcn):
-    ''' Configure the CMD57 '''
+    """ Configure the CMD57 """
     cmd.configure_man(ccch_arfcn=arfcn, tch_arfcn=arfcn,
                       tch_ts=2, tsc=7,
                       expected_power=37, tch_tx_power=-60,
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
     arfcnset = cmd.ask_bts_ccch_arfcn()
-    #print ("ARFCN=%d NET=%s" % (arfcnset, cmd.ask_network_type()))
+    # print("ARFCN=%d NET=%s" % (arfcnset, cmd.ask_network_type()))
     return arfcnset
 
 
@@ -928,11 +1024,12 @@ def test_configure_cmd57(kwargs):
     cmd.switch_to_man_bidl()
     return cmd57_configure(cmd, arfcn) == arfcn
 
+
 @test_checker_decorator("run_tch_sync",
                         INFO="Syncronize CMD57 with the DUT",
                         CHECK=test_val_checker(TEST_OK))
 def run_tch_sync(kwargs):
-    #print("Starting Tx tests.")
+    # print("Starting Tx tests.")
 
     # Make sure we start in idle mode
     kwargs["CMD"].switch_to_idle()
@@ -951,7 +1048,7 @@ def run_tch_sync(kwargs):
 
 
 def run_bts_tests(kwargs):
-    #print("Starting BTS tests.")
+    # print("Starting BTS tests.")
 
     # Stop osmo-trx to unlock UmTRX
     kwargs["BTS"].osmo_trx_stop()
@@ -969,8 +1066,11 @@ def run_bts_tests(kwargs):
     gen_test_id(kwargs)
 
     # Autocalibrate UmTRX
-    test_id = str(tr.get_test_result("test_id", "system")[2])
-    bts_umtrx_autocalibrate(kwargs["BTS"], get_band(kwargs["ARFCN"]), "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
+    test_id = str(kwargs["TR"].get_test_result("test_id", "system")[2])
+    bts_umtrx_autocalibrate(kwargs["BTS"],
+                            get_band(kwargs["ARFCN"]),
+                            "out/calibration." + test_id + ".log",
+                            "calibration.err." + test_id + ".log")
 
     # UmTRX Reset Test
     umtrx_reset_test(kwargs)
@@ -980,16 +1080,15 @@ def run_bts_tests(kwargs):
 
 
 def run_cmd57_info(kwargs):
-    #print("Collecting CMD57 information.")
+    # print("Collecting CMD57 information.")
 
     # Collect useful information about the CMD57
     test_tester_id(kwargs)
     test_tester_options(kwargs)
 
 
-
 def run_tx_tests(kwargs):
-    #print("Starting Tx tests.")
+    # print("Starting Tx tests.")
 
     # Burst power measurements
     test_burst_power_avg(kwargs)
@@ -1017,7 +1116,8 @@ def run_tx_tests(kwargs):
 
 
 def run_ber_tests(kwargs):
-    #print("Starting BER tests.")
+    cmd = kwargs["CMD"]
+    # print("Starting BER tests.")
 
     test_ber_configure(kwargs)
 
@@ -1052,15 +1152,15 @@ def run_ber_tests(kwargs):
     cmd.print_ber_test_result(False)
 
 
-
 def get_band(arfcn):
-    if arfcn > 511 and arfcn < 886:
+    if 511 < arfcn < 886:
         return "DCS1800"
-    elif (arfcn > 974 and arfcn < 1024) or arfcn == 0:
+    elif (974 < arfcn < 1024) or arfcn == 0:
         return "EGSM900"
-    elif arfcn > 0 and arfcn < 125:
+    elif 0 < arfcn < 125:
         return "GSM900"
     return None
+
 
 def set_band_using_arfcn(cmd, arfcn):
     bstr = get_band(arfcn)
@@ -1071,34 +1171,39 @@ def set_band_using_arfcn(cmd, arfcn):
         cmd.switch_to_idle()
         cmd.set_network_type("GSM900")
     else:
-        print ("This band isn't supported by CMD57")
+        print("This band isn't supported by CMD57")
+
 
 def check_arfcn(n, band):
     if band == "GSM900":
-        return n >= 1 and n <= 124
+        return 1 <= n <= 124
     elif band == "EGSM900":
-        return n >= 0 and n <= 124 or n >= 975 and n <= 1023
+        return (0 <= n <= 124) or (975 <= n <= 1023)
     elif band == "RGSM900":
-        return n >= 0 and n <= 124 or n >= 955 and n <= 1023
+        return (0 <= n <= 124) or (955 <= n <= 1023)
     elif band == "GSM1800" or band == "DCS1800":
-        return n >= 512 and n <= 885
+        return 512 <= n <= 885
     else:
         return False
+
 
 @test_checker_decorator("load_dut_checks",
                         INFO="Load DUT specific checks")
 def load_dut_checks(kwargs):
     import bts_params
     dut = kwargs.get("DUT")
+    tr = kwargs["TR"]
 
     if dut not in bts_params.HARDWARE_LIST.keys():
-        tr.output_progress ("Unknown device %s!\nSupported: %s" % (dut,
-                 str([i for i in bts_params.HARDWARE_LIST.keys()])))
+        tr.output_progress(("Unknown device %s!\n" % dut) +
+                           ("Supported: %s" % str(
+                               [i for i in bts_params.HARDWARE_LIST.keys()])))
         return None
 
     dut_checks = bts_params.HARDWARE_LIST[dut]
     kwargs["DUT_CHECKS"] = dut_checks
     return dut
+
 
 @test_checker_decorator("check_hw_band",
                         INFO="Check whether DUT supports selected ARFCN",
@@ -1107,11 +1212,12 @@ def check_hw_band(kwargs):
     dut = kwargs["DUT"]
     arfcn = kwargs["ARFCN"]
     dut_checks = kwargs["DUT_CHECKS"]
+    tr = kwargs["TR"]
     hw_band = dut_checks.get("hw_band")
 
     if hw_band is not None and not check_arfcn(arfcn, hw_band):
-        tr.output_progress ("Hardware %s doesn't support ARFCN %d in band %s" % (
-                    dut, arfcn, dut_checks["hw_band"]))
+        tr.output_progress(("Hardware %s doesn't support ARFCN %d in band " +
+                            "%s") % (dut, arfcn, dut_checks["hw_band"]))
         return False
     return True
 
@@ -1120,6 +1226,5 @@ def check_hw_band(kwargs):
                         INFO="UI interactions to reconnect CMD57",
                         CHECK=test_bool_checker())
 def connect_rf_to_cmd57(kwargs):
-    return kwargs["UI"].ask("Connect CMD57 to the TRX%s." % str(kwargs.get("CHAN", "")))
-
-
+    return kwargs["UI"].ask("Connect CMD57 to the TRX%s." %
+                            str(kwargs.get("CHAN", "")))

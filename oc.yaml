@@ -44,6 +44,7 @@
                     abort_bundle_on_failure: True
                     args:
                         timeout: 150
+#                - enable_tch_loopback
                 - burst_power_avg:
                     abort_bundle_on_failure: True
                 - burst_power_array

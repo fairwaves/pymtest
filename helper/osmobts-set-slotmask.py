@@ -11,7 +11,8 @@ if __name__ == '__main__':
     parser.add_argument("-v", "--verbose", dest="verbose",
                         action="store_true", help="verbose mode")
     for i in range(8):
-        parser.add_argument("ts%d"%i, type=int, choices = range(0, 2), metavar = 'TS%d'%i, help="Enable timeslot %d? [0..1]"%i)
+        parser.add_argument("ts%d" % i, type=int, choices=range(
+            0, 2), metavar='TS%d' % i, help="Enable timeslot %d? [0..1]" % i)
     args = parser.parse_args()
 
     verbose_level = 1
@@ -25,5 +26,6 @@ if __name__ == '__main__':
     vty.command("configure terminal")
     vty.command("bts 0")
     vty.command("trx 0")
-    vty.command("slotmask %d %d %d %d %d %d %d %d" % (args.ts0, args.ts1, args.ts2, args.ts3, args.ts4, args.ts5, args.ts6, args.ts7))
-
+    vty.command("slotmask %d %d %d %d %d %d %d %d" % (
+        args.ts0, args.ts1, args.ts2, args.ts3, args.ts4,
+        args.ts5, args.ts6, args.ts7))

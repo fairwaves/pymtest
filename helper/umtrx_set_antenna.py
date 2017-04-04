@@ -15,9 +15,9 @@ s = umtrx_property_tree()
 s.connect()
 
 for side in ["A", "B"]:
-    path = "/mboards/0/dboards/"+side+"/rx_frontends/0/antenna/value"
+    path = "/mboards/0/dboards/" + side + "/rx_frontends/0/antenna/value"
     print s.set_string(path, args.rx_antenna)
-    path = "/mboards/0/dboards/"+side+"/tx_frontends/0/antenna/value"
+    path = "/mboards/0/dboards/" + side + "/tx_frontends/0/antenna/value"
     print s.set_string(path, args.tx_antenna)
 
 s.close()

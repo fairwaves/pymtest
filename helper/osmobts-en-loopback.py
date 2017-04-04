@@ -22,4 +22,3 @@ if __name__ == '__main__':
     vty.command("enable")
     vty.command("bts 0 trx 0 ts 2 lchan 0 activate")
     vty.command("bts 0 trx 0 ts 2 lchan 0 loopback")
-

@@ -24,5 +24,4 @@ if __name__ == '__main__':
     vty.command("configure terminal")
     vty.command("bts 0")
     vty.command("trx 0")
-    vty.command("maxdly %d"%args.maxdly)
-
+    vty.command("maxdly %d" % args.maxdly)

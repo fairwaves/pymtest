@@ -15,14 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-import struct, socket
+import struct
+import socket
 # pylint: disable = C0301, C0103, C0111, R0903, R0913
 
 UDP_CONTROL_PORT = 49152
 UDP_MAX_XFER_BYTES = 1024
 UDP_TIMEOUT = 1
-UDP_POLL_INTERVAL = 0.10 #in seconds
-USRP2_CONTROL_PROTO_VERSION = 11 # Must match firmware proto. We're setting it in detect()
+UDP_POLL_INTERVAL = 0.10  # in seconds
+# Must match firmware proto. We're setting it in detect()
+USRP2_CONTROL_PROTO_VERSION = 11
 supported_control_proto_versions = [11, 12]
 
 # see fw_common.h
@@ -32,12 +34,12 @@ SPI_FMT = '!LLLLLBBBB12x'
 ZPU_ACTION_FMT = '!LLLLL16x'
 
 n2xx_revs = {
-  0x0a00: ["n200_r3", "n200_r2"],
-  0x0a10: ["n200_r4"],
-  0x0a01: ["n210_r3", "n210_r2"],
-  0x0a11: ["n210_r4"],
-  0xfa00: ["umtrx"],
-  }
+    0x0a00: ["n200_r3", "n200_r2"],
+    0x0a10: ["n200_r4"],
+    0x0a01: ["n210_r3", "n210_r2"],
+    0x0a11: ["n210_r4"],
+    0xfa00: ["umtrx"],
+}
 
 # remember kids: drugs are bad...
 USRP2_CTRL_ID_HUH_WHAT = ord(' ')
@@ -55,7 +57,7 @@ USRP2_CTRL_ID_GET_THIS_REGISTER_FOR_ME_BRO = ord('r')
 USRP2_CTRL_ID_OMG_GOT_REGISTER_SO_BAD_DUDE = ord('R')
 USRP2_CTRL_ID_HOLLER_AT_ME_BRO = ord('l')
 USRP2_CTRL_ID_HOLLER_BACK_DUDE = ord('L')
-UMTRX_CTRL_ID_ZPU_REQUEST  = ord('z')
+UMTRX_CTRL_ID_ZPU_REQUEST = ord('z')
 UMTRX_CTRL_ID_ZPU_RESPONSE = ord('Z')
 USRP2_CTRL_ID_PEACE_OUT = ord('~')
 SPI_EDGE_RISE = ord('r')
@@ -63,56 +65,72 @@ SPI_EDGE_FALL = ord('f')
 UMTRX_ZPU_REQUEST_GET_VCTCXO_DAC = 1
 UMTRX_ZPU_REQUEST_SET_VCTCXO_DAC = 2
 
+
 def unpack_format(_str, fmt):
     return struct.unpack(fmt, _str)
+
 
 def pack_control_fmt(proto_ver, pktid, seq):
     return struct.pack(CONTROL_FMT, proto_ver, pktid, seq)
 
+
 def pack_spi_fmt(proto_ver, pktid, seq, dev, data, miso, mosi, bits, read):
-    return struct.pack(SPI_FMT, proto_ver, pktid, seq, dev, data, miso, mosi, bits, read)
+    return struct.pack(SPI_FMT, proto_ver, pktid, seq, dev, data, miso,
+                       mosi, bits, read)
+
 
 def pack_zpu_action_fmt(proto_ver, pktid, seq, action, data):
     return struct.pack(ZPU_ACTION_FMT, proto_ver, pktid, seq, action, data)
+
 
 def recv_item(skt, fmt, chk, ind):
     try:
         pkt = skt.recv(UDP_MAX_XFER_BYTES)
         pkt_list = unpack_format(pkt, fmt)
-#        print("Received %d bytes: %x, '%c', %x" % (len(pkt), pkt_list[0], pkt_list[1], pkt_list[2]))
+        # print("Received %d bytes: %x, '%c', %x" % (len(pkt), pkt_list[0],
+        #     pkt_list[1], pkt_list[2]))
         if pkt_list[1] != chk:
-            return (None,None)
-        return (pkt_list[ind],pkt_list[0])
+            return (None, None)
+        return (pkt_list[ind], pkt_list[0])
     except socket.timeout:
-        return (None,None)
+        return (None, None)
+
 
 def ping(skt, addr):
     skt.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    out_pkt = pack_control_fmt(USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST, 0)
+    out_pkt = pack_control_fmt(
+        USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST, 0)
     skt.sendto(out_pkt, (addr, UDP_CONTROL_PORT))
     return recv_item(skt, CONTROL_FMT, UMTRX_CTRL_ID_RESPONSE, 1)
 
+
 def detect(skt, bcast_addr):
     global USRP2_CONTROL_PROTO_VERSION
-#    print('Detecting UmTRX over %s:' % bcast_addr)
-    skt.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    
-    out_pkt = pack_control_fmt(USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST, 0)
-#    print(" Sending %d bytes: %x, '%c',.." % (len(out_pkt), USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST))
+    # print('Detecting UmTRX over %s:' % bcast_addr)
+    skt.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    out_pkt = pack_control_fmt(
+        USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST, 0)
+    # print(" Sending %d bytes: %x, '%c',.." % (len(out_pkt),
+    #      USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_REQUEST))
     skt.sendto(out_pkt, (bcast_addr, UDP_CONTROL_PORT))
-    response,version = recv_item(skt, CONTROL_IP_FMT, UMTRX_CTRL_ID_RESPONSE, 3)
+    response, version = recv_item(
+        skt, CONTROL_IP_FMT, UMTRX_CTRL_ID_RESPONSE, 3)
     if version is None or response is None:
         return None
-    if not version in supported_control_proto_versions:
-        print("Error: You Firmware is too old! Your protocol ver: %d. Protocol ver required: [%s]\n"
-              % (version, ", ".join([str(x) for x in supported_control_proto_versions])))
+    if version not in supported_control_proto_versions:
+        print("Error: You Firmware is too old! Your protocol ver: %d. " +
+              "Protocol ver required: [%s]\n" % (version, ", ".join(
+                  [str(x) for x in supported_control_proto_versions])))
     # If we support this version - use it
     USRP2_CONTROL_PROTO_VERSION = version
     return socket.inet_ntoa(struct.pack("<L", socket.ntohl(response)))
 
+
 class umtrx_dev_spi:
     """ A class for talking to a device sitting on the SPI bus of UmTRX """
 
-    def __init__(self, umtrx_socket, net_address, spi_bus_number, out_edge=SPI_EDGE_RISE, in_edge=SPI_EDGE_RISE):
+    def __init__(self, umtrx_socket, net_address, spi_bus_number,
+                 out_edge=SPI_EDGE_RISE, in_edge=SPI_EDGE_RISE):
         """ spi_bus_number - a number of SPI bus to read/write """
         self.skt = umtrx_socket
         self.addr = net_address
@@ -126,11 +144,15 @@ class umtrx_dev_spi:
         num_bits - number of bits of data to read/write
         readback - 1 to read data from SPI bus, 0 to ignore data on the bus """
         self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 0)
-        out_pkt = pack_spi_fmt(USRP2_CONTROL_PROTO_VERSION, USRP2_CTRL_ID_TRANSACT_ME_SOME_SPI_BRO, \
-                               0, self.spi_num, data, self.in_edge, self.out_edge, num_bits, readback)
+        out_pkt = pack_spi_fmt(USRP2_CONTROL_PROTO_VERSION,
+                               USRP2_CTRL_ID_TRANSACT_ME_SOME_SPI_BRO,
+                               0, self.spi_num, data, self.in_edge,
+                               self.out_edge, num_bits, readback)
         self.skt.sendto(out_pkt, (self.addr, UDP_CONTROL_PORT))
-        ret,_ = recv_item(self.skt, SPI_FMT, USRP2_CTRL_ID_OMG_TRANSACTED_SPI_DUDE, 4) 
+        ret, _ = recv_item(self.skt, SPI_FMT,
+                           USRP2_CTRL_ID_OMG_TRANSACTED_SPI_DUDE, 4)
         return ret
+
 
 class umtrx_lms_device:
 
@@ -139,12 +161,14 @@ class umtrx_lms_device:
         self.verbosity = 0
 
     def reg_read(self, reg):
-        data = self.spi.spi_rw(reg << 8, 16, 1) & ((1<<8)-1)
-        if self.verbosity > 0: print("REG READ  0x%x -> 0x%x" % (reg, data,))
+        data = self.spi.spi_rw(reg << 8, 16, 1) & ((1 << 8) - 1)
+        if self.verbosity > 0:
+            print("REG READ  0x%x -> 0x%x" % (reg, data,))
         return data
 
     def reg_write(self, reg, data):
-        if self.verbosity > 0: print("REG WRITE 0x%x <- 0x%x" % (reg, data,))
+        if self.verbosity > 0:
+            print("REG WRITE 0x%x <- 0x%x" % (reg, data,))
         self.spi.spi_rw(((0x80 | reg) << 8) | data, 16, 0)
 
     def reg_rmw(self, reg, action):
@@ -165,21 +189,25 @@ class umtrx_lms_device:
         return self.reg_rmw(reg, lambda x: (x & ~int(mask)) | int(data))
 
     def reg_get_bits(self, reg, mask, shift):
-        return (self.reg_read(reg)&int(mask)) >> shift
+        return (self.reg_read(reg) & int(mask)) >> shift
+
 
 class umtrx_vcxo_dac:
 
     def __init__(self, umtrx_socket, net_address):
         self.skt = umtrx_socket
         self.addr = net_address
-#        self.spi = umtrx_dev_spi(umtrx_socket, net_address, 4, out_edge=SPI_EDGE_FALL)
+        # self.spi = umtrx_dev_spi(umtrx_socket,
+        #                          net_address, 4, out_edge=SPI_EDGE_FALL)
 
     def zpu_action(self, action, data=0):
         self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 0)
-        out_pkt = pack_zpu_action_fmt(USRP2_CONTROL_PROTO_VERSION, UMTRX_CTRL_ID_ZPU_REQUEST, \
+        out_pkt = pack_zpu_action_fmt(USRP2_CONTROL_PROTO_VERSION,
+                                      UMTRX_CTRL_ID_ZPU_REQUEST,
                                       0, action, data)
         self.skt.sendto(out_pkt, (self.addr, UDP_CONTROL_PORT))
-        ret,_ = recv_item(self.skt, ZPU_ACTION_FMT, UMTRX_CTRL_ID_ZPU_RESPONSE, 4)
+        ret, _ = recv_item(self.skt, ZPU_ACTION_FMT,
+                           UMTRX_CTRL_ID_ZPU_RESPONSE, 4)
         return ret
 
     def set_dac(self, v):
@@ -188,13 +216,16 @@ class umtrx_vcxo_dac:
     def get_dac(self):
         return self.zpu_action(UMTRX_ZPU_REQUEST_GET_VCTCXO_DAC)
 
-def create_umtrx_lms_device(lms_number, ip_address=None, bcast_addr="192.168.10.255"):
+
+def create_umtrx_lms_device(lms_number, ip_address=None,
+                            bcast_addr="192.168.10.255"):
     ''' Fabric function to create UmTRX LMS device class '''
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(UDP_TIMEOUT)
-    umtrx_addr = detect(sock, ip_address if ip_address is not None else bcast_addr)
+    umtrx_addr = detect(
+        sock, ip_address if ip_address is not None else bcast_addr)
     umtrx_lms_dev = None
-    if umtrx_addr is not None: # UmTRX address established
-        if ping(sock, umtrx_addr): # UmTRX probed
+    if umtrx_addr is not None:  # UmTRX address established
+        if ping(sock, umtrx_addr):  # UmTRX probed
             umtrx_lms_dev = umtrx_lms_device(sock, umtrx_addr, lms_number)
     return umtrx_lms_dev
