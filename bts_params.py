@@ -33,6 +33,41 @@ HARDWARE_LIST = {
     "ddc_r_def" : 255,
     "hw_band": "EGSM900"
   },
+
+  "UmSITE-TM5-900": {
+    "hw_model": "UmSITE-TM5",
+    "burst_power_peak_min": 36,  # dBm
+    "burst_power_peak_max": 38,  # dBm
+    "burst_power_avg_min": 36,  # dBm
+    "burst_power_avg_max": 38,  # dBm
+    "freq_error": 50,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 2.0,  # deg
+    "ddc_r_min" : 128,
+    "ddc_r_max" : 230,
+    "ddc_r_def" : 220,
+    "hw_band" : "EGSM900"
+  },
+
+  "UmSITE-TM5-1800": {
+    "hw_model": "UmSITE-TM5",
+    "burst_power_peak_min": 36,  # dBm
+    "burst_power_peak_max": 37.5,  # dBm
+    "burst_power_avg_min": 36,  # dBm
+    "burst_power_avg_max": 37.5,  # dBm
+    "freq_error": 50,  # Hz
+    "phase_err_pk_min": -10.0,  # deg
+    "phase_err_pk_max":  10.0,  # deg
+    "phase_err_avg_min": 0.5,  # deg
+    "phase_err_avg_max": 2.0,  # deg
+    "ddc_r_min" : 128,
+    "ddc_r_max" : 255,
+    "ddc_r_def" : 255,
+    "hw_band" : "DCS1800"
+  },
+
   "UmSITE-TM3-any": {
     "hw_model": "UmSITE-TM3",
     "burst_power_peak_min": 34,  # dBm
