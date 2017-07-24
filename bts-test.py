@@ -765,6 +765,7 @@ def cmd57_configure(cmd, arfcn):
                       expected_power=37, tch_tx_power=-60,
                       tch_mode='PR16', tch_timing=0)
     cmd.configure_spectrum_modulation(burst_num=10)
+    cmd.set_phase_decoding_mode('GATBits')
     print ("ARFCN=%d NET=%s" % (cmd.ask_bts_ccch_arfcn(), cmd.ask_network_type()))
 
 ###############################
