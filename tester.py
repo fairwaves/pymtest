@@ -101,9 +101,11 @@ class MainWindowImpl(QMainWindow, main_form):
 
     @pyqtSlot()
     def on_btFind_clicked(self):
+        ip_range = '192.168.1.0/24'
+        self.txConsole.appendHtml("Scanning IP range %s for BTSs, it may take a while..." % (ip_range,))
         self.cbHosts.clear()
         self.cbHosts.addItems(["manual", "local"])
-        ips = subprocess.check_output('nmap -sP 192.168.1.0/24 | grep "Nmap scan report for "', shell=True).decode('utf-8').replace("Nmap scan report for ", "").split()
+        ips = subprocess.check_output('nmap -sP %s | grep "Nmap scan report for "' % (ip_range,), shell=True).decode('utf-8').replace("Nmap scan report for ", "").split()
         if len(ips) == 0:
             self.txConsole.appendHtml("No hosts were found")
             return
@@ -121,6 +123,7 @@ class MainWindowImpl(QMainWindow, main_form):
                 self.txConsole.appendHtml("Host %s is unreachable" % ip)
             except socket.timeout:
                 self.txConsole.appendHtml("Host %s connection timed out" % ip)
+        self.txConsole.appendHtml("Finished scanning.")
 
 
     @pyqtSlot()
