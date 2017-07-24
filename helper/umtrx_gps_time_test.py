@@ -1,16 +1,29 @@
 #!/usr/bin/env python
 import sys
 from gps import *
-from datetime import datetime
+from datetime import tzinfo, timedelta, datetime
+import dateutil.parser
+
+ZERO = timedelta(0)
+
+class UTC(tzinfo):
+  def utcoffset(self, dt):
+    return ZERO
+  def tzname(self, dt):
+    return "UTC"
+  def dst(self, dt):
+    return ZERO
+
 
 try:
     session = gps()
     session.stream(WATCH_ENABLE)
 
     for report in session:
-        if report['class'] == 'TPV' and report['tag'] == 'GLL':
-            time = datetime.strptime(report['time'], "%Y-%m-%dT%H:%M:%S.000Z")
-            today = datetime.today()
+#        print(str(report))
+        if report['class'] == 'TPV' and (report['tag'] == 'GLL' or report['tag'] == 'RMC'):
+            time = dateutil.parser.parse(report['time'])
+            today = datetime.now(UTC())
 
             delta = (time - today).total_seconds()
             print ("%s %+f" % (today, delta))
