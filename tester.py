@@ -120,9 +120,14 @@ class MainWindowImpl(QMainWindow, main_form):
                 self.cbHosts.addItem(ip)
 
             except ConnectionRefusedError:
-                self.txConsole.appendHtml("Host %s is unreachable" % ip)
+#                self.txConsole.appendHtml("Host %s is unreachable" % ip)
+                pass
             except socket.timeout:
-                self.txConsole.appendHtml("Host %s connection timed out" % ip)
+#                self.txConsole.appendHtml("Host %s connection timed out" % ip)
+                pass
+            except Exception as e:
+#                self.txConsole.appendHtml("Host %s error: %s" % (ip,str(e)))
+                pass
         self.txConsole.appendHtml("Finished scanning.")
 
 
