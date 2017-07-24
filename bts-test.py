@@ -445,7 +445,7 @@ class BtsControlBase:
         '''Obtain time diff GPS vs system'''
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
-            '%s python3 umtrx_gps_time_test.py' % (self.sudo))
+            '%s python umtrx_gps_time_test.py' % (self.sudo))
 
     def bts_get_hw_config(self, param):
         ''' Get hardware configuration parameter '''
