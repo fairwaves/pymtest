@@ -396,9 +396,8 @@ class BtsControlBase:
                "umtrx_get_vswr_sensors.py",
                # TODO: Move this from helpers to packages
                "umtrx_property_tree.py",
-               "umtrx_ctrl.py", "umtrx_lms.py"]
-
-    locals = ["test_umtrx_reset.py", "test_umtrx_gps_time.py"]
+               "umtrx_ctrl.py", "umtrx_lms.py",
+               "umtrx_reset_test.py", "umtrx_gps_time_test.py"]
 
     def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
         ''' Connect to a BTS and prepare it for testing '''
@@ -406,7 +405,6 @@ class BtsControlBase:
         self.tmpdir = tmpdir
         self._exec_stdout('mkdir -p '+self.tmpdir)
         self._copy_file_list('helper/', self.helpers, self.tmpdir)
-        self._copy_file_list('./', self.locals, self.tmpdir)
         self.sudo = sudopkg
 
     def _tee(self, stream, filename):
@@ -447,7 +445,7 @@ class BtsControlBase:
         '''Obtain time diff GPS vs system'''
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
-            '%s python3 test_umtrx_gps_time.py' % (self.sudo))
+            '%s python3 umtrx_gps_time_test.py' % (self.sudo))
 
     def bts_get_hw_config(self, param):
         ''' Get hardware configuration parameter '''
@@ -479,7 +477,7 @@ class BtsControlBase:
     def umtrx_reset_test(self):
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
-            '%s python3 test_umtrx_reset.py' % self.sudo)
+            '%s python3 umtrx_reset_test.py' % self.sudo)
 
     def umtrx_set_dcdc_r(self, val):
         ''' Set UmTRX DCDC control register value '''
