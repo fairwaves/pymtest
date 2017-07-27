@@ -81,6 +81,7 @@ TEST_NAMES = {
     "bts_hw_band": "BTS hardware band",
     "bts_umtrx_ver": "BTS umtrx ver",
     "umtrx_gps_time": "UmTRX GPS time",
+    "umtrx_gpsdo_wait": "Waiting for UmTRX GPSDO to stabilize frequency",
     "umtrx_serial": "UmTRX serial number",
     "umtrx_autocalibrate": "UmTRX autocalibration",
     "umtrx_reset_test" : "UmTRX Reset and Safe firmware loading test",
@@ -147,6 +148,7 @@ def init_test_checks(DUT_PARAMS):
         "umtrx_autocalibrate": test_bool_checker(),
         "umtrx_reset_test": test_bool_checker(),
         "umtrx_gps_time": test_bool_checker(),
+        "umtrx_gpsdo_wait": test_bool_checker(),
         "tester_name": test_ignore_checker(),
         "tester_serial": test_ignore_checker(),
         "tester_version": test_ignore_checker(),
@@ -397,7 +399,8 @@ class BtsControlBase:
                # TODO: Move this from helpers to packages
                "umtrx_property_tree.py",
                "umtrx_ctrl.py", "umtrx_lms.py",
-               "umtrx_reset_test.py", "umtrx_gps_time_test.py"]
+               "umtrx_reset_test.py", "umtrx_gps_time_test.py",
+               "umtrx_wait_stable_gpsdo.py"]
 
     def __init__(self, tmpdir='/tmp/bts-test', sudopkg='sudo'):
         ''' Connect to a BTS and prepare it for testing '''
@@ -446,6 +449,12 @@ class BtsControlBase:
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
             '%s python umtrx_gps_time_test.py' % (self.sudo))
+
+    def umtrx_wait_gpsdo(self):
+        '''Wait for GPSDO to stabilize'''
+        return self._exec_stdout_stderr(
+            'cd ' + self.tmpdir + '; ' +
+            '%s python umtrx_wait_stable_gpsdo.py' % (self.sudo))
 
     def bts_get_hw_config(self, param):
         ''' Get hardware configuration parameter '''
@@ -713,6 +722,12 @@ def umtrx_reset_test(bts, tr):
 @test_checker_decorator("umtrx_gps_time")
 def umtrx_gps_time(bts, tr):
     lns = bts.umtrx_get_gps_time()
+    tr.output_progress(str(lns))
+    return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
+
+@test_checker_decorator("umtrx_gpsdo_wait")
+def umtrx_gpsdo_wait(bts, tr):
+    lns = bts.umtrx_wait_gpsdo()
     tr.output_progress(str(lns))
     return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
 
@@ -1137,12 +1152,15 @@ def run_bts_tests(tr, band):
     # Generate Test ID to be used in file names
     gen_test_id()
 
+    # UmTRX Reset Test
+    umtrx_reset_test(bts, tr)
+
+    # Wait for GPSDO to stabilize frequency after reset
+    umtrx_gpsdo_wait(bts, tr)
+
     # Autocalibrate UmTRX
     test_id = str(tr.get_test_result("test_id", "system")[2])
     bts_umtrx_autocalibrate(bts, band, "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
-
-    # UmTRX Reset Test
-    umtrx_reset_test(bts, tr)
 
     # Start osmo-trx again
     bts.osmo_trx_start()
@@ -1446,6 +1464,8 @@ if __name__ == '__main__':
                 tr.output_progress(bts.trx_set_primary(trx))
                 bts.osmo_trx_restart()
                 run_cmd57_info()
+                # Wait for GPSDO to stabilize frequency after osmo-trx restart
+                umtrx_gpsdo_wait(bts, tr)
                 res = run_tch_sync()
                 if res == TEST_OK:
                     run_tx_tests()
