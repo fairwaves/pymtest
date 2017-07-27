@@ -1160,7 +1160,7 @@ def run_bts_tests(tr, band):
 
     # Autocalibrate UmTRX
     test_id = str(tr.get_test_result("test_id", "system")[2])
-    bts_umtrx_autocalibrate(bts, band, "out/calibration."+test_id+".log", "calibration.err."+test_id+".log")
+    bts_umtrx_autocalibrate(bts, band, "out/calibration."+test_id+".log", "out/calibration.err."+test_id+".log")
 
     # Start osmo-trx again
     bts.osmo_trx_start()
