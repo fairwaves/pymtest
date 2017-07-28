@@ -1183,6 +1183,9 @@ def run_tch_sync():
     # Measure peak power before everything else
     test_burst_power_peak_wait(cmd, 20)
 
+    # Make sure GPSDO has done stabilizing frequency
+    umtrx_gpsdo_wait(bts, tr)
+
     # Prepare for TCH tests
     return test_enable_tch_loopback(cmd, bts)
 
@@ -1464,8 +1467,6 @@ if __name__ == '__main__':
                 tr.output_progress(bts.trx_set_primary(trx))
                 bts.osmo_trx_restart()
                 run_cmd57_info()
-                # Wait for GPSDO to stabilize frequency after osmo-trx restart
-                umtrx_gpsdo_wait(bts, tr)
                 res = run_tch_sync()
                 if res == TEST_OK:
                     run_tx_tests()
