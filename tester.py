@@ -115,8 +115,9 @@ class MainWindowImpl(QMainWindow, main_form):
             try:
                 b = bts_test.BtsControlSsh(ip, 22)
                 u = b.get_uname()
+                h = u.split()[1]
                 s = b.get_umtrx_eeprom_val("serial")
-                self.txConsole.appendHtml("Host <b>%s</b> - <i>%s</i> - %s" % (ip, u, s))
+                self.txConsole.appendHtml("Host <b>%s</b> - <i>%s</i> - %s" % (ip, h, s))
                 self.cbHosts.addItem(ip)
 
             except ConnectionRefusedError:
