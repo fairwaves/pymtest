@@ -49,7 +49,7 @@ def check_events(f, events, timeout):
 # to fail because exceptions due to failure to convert to UTF-8 (default encoding).
 # The solution is described here:
 # http://python-notes.curiousefficiency.org/en/latest/python3/text_file_processing.html#files-in-an-ascii-compatible-encoding-best-effort-is-acceptable
-# In short: "use the “latin-1” encoding to map byte values directly to the first
+# In short: "use the 'latin-1' encoding to map byte values directly to the first
 # 256 Unicode code points. This is the closest equivalent Python 3 offers to
 # the permissive Python 2 text handling model.
 with open(LOG, 'rt', encoding="latin-1") as f:
