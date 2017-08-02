@@ -7,23 +7,28 @@ import subprocess
 LOG='/var/log/umtrx-log/current'
 
 PRODUCTION=(
+	"UmTRX bootloader",
 	"SPI Flash has been initialized",
 	"Checking for valid production FPGA image...",
-	"Valid production FPGA image found. Attempting to boot.",
+	"Valid production FPGA image found, booting..",
 	"SPI Flash has been initialized",
 	"Valid production firmware found. Loading...",
-	"Finished loading. Starting image.",
-	"TxRx-UHD-ZPU",
+	"Starting image...",
+	"UmTRX production",
 	"LMS1 chip version = 0x22",
 	"LMS2 chip version = 0x22",
+	"Init is done",
 	"eth link changed: speed = 1000")
 
 SAFE=(
+	"UmTRX bootloader",
 	"SPI Flash has been initialized",
-	"Starting UmTRX in safe mode. Loading safe firmware.",
+	"Starting UmTRX in safe mode.",
 	"LMS1 chip version = 0x22",
 	"LMS2 chip version = 0x22",
+	"Init is done",
 	"eth link changed: speed = 1000")
+
 
 def check_events(f, events, timeout):
 	start = time.time()
