@@ -144,7 +144,7 @@ def init_test_checks(DUT_PARAMS):
         "bts_hw_model": test_substr_checker(
             DUT_PARAMS["hw_model"]),
         "bts_hw_band": test_ignore_checker(),
-        "bts_umtrx_ver": test_ignore_checker(),
+        "bts_umtrx_ver": test_val_checker('2.3.1'),
         "bts_network_cards": test_val_checker('pci0 10ec:8168, pci1 8086:1533'),
         "umtrx_serial": test_none_checker(),
         "umtrx_autocalibrate": test_bool_checker(),
