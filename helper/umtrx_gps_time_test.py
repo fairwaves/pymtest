@@ -38,4 +38,5 @@ try:
 except IOError as e:
     print("ERROR: " + str(e))
 
+print("ERROR: Empty session")
 sys.exit(2)
