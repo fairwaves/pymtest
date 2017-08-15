@@ -80,6 +80,7 @@ TEST_NAMES = {
     "bts_hw_model": "BTS hardware model",
     "bts_hw_band": "BTS hardware band",
     "bts_umtrx_ver": "BTS umtrx ver",
+    "bts_network_cards": "BTS network cards PCI IDs",
     "umtrx_gps_time": "UmTRX GPS time",
     "umtrx_gpsdo_wait": "Waiting for UmTRX GPSDO to stabilize frequency",
     "umtrx_serial": "UmTRX serial number",
@@ -144,6 +145,7 @@ def init_test_checks(DUT_PARAMS):
             DUT_PARAMS["hw_model"]),
         "bts_hw_band": test_ignore_checker(),
         "bts_umtrx_ver": test_ignore_checker(),
+        "bts_network_cards": test_val_checker('pci0 10ec:8168, pci1 8086:1533'),
         "umtrx_serial": test_none_checker(),
         "umtrx_autocalibrate": test_bool_checker(),
         "umtrx_reset_test": test_bool_checker(),
@@ -483,6 +485,24 @@ class BtsControlBase:
         return self._exec_stdout_stderr(
             '%s shutdown -h now' % (self.sudo))
 
+    def bts_get_pci_ids(self):
+        ''' Check that we have correct network cards installed. '''
+        stdin, stdout, stderr = self._exec(
+            'lspci -n')
+        pci1_re = re.compile(r'^01:00.0 [\da-z]+: ([\da-z:]+)')
+        pci2_re = re.compile(r'^02:00.0 [\da-z]+: ([\da-z:]+)')
+
+        interfaces = []
+        for l in stdout:
+            match = pci1_re.match(l)
+            if match is not None:
+                interfaces.append('pci0 '+match.group(1))
+                continue
+            match = pci2_re.match(l)
+            if match is not None:
+                interfaces.append('pci1 '+match.group(1))
+        return interfaces
+
     def umtrx_reset_test(self):
         return self._exec_stdout_stderr(
             'cd ' + self.tmpdir + '; ' +
@@ -724,6 +744,11 @@ def umtrx_gps_time(bts, tr):
     lns = bts.umtrx_get_gps_time()
     tr.output_progress(str(lns))
     return len(lns) > 0 and lns[-1].find('SUCCESS') != -1
+
+@test_checker_decorator("bts_network_cards")
+def bts_network_cards(bts):
+    interfaces = bts.bts_get_pci_ids()
+    return ', '.join(interfaces)
 
 @test_checker_decorator("umtrx_gpsdo_wait")
 def umtrx_gpsdo_wait(bts, tr):
@@ -1148,6 +1173,7 @@ def run_bts_tests(tr, band):
     bts_hw_model(bts)
     bts_hw_band(bts)
     bts_umtrx_ver(bts)
+    bts_network_cards(bts)
 
     # Generate Test ID to be used in file names
     gen_test_id()
