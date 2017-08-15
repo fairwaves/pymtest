@@ -8,6 +8,8 @@ LOG='/var/log/umtrx-log/current'
 
 PRODUCTION=(
 	"UmTRX bootloader",
+	"FPGA compatibility number: 9",
+	"Firmware: 12.3-8D7B9D84",
 	"SPI Flash has been initialized",
 	"Checking for valid production FPGA image...",
 	"Valid production FPGA image found, booting..",
@@ -15,17 +17,23 @@ PRODUCTION=(
 	"Valid production firmware found. Loading...",
 	"Starting image...",
 	"UmTRX production",
+	"FPGA compatibility number: 9",
+	"Firmware: 12.3-8678899B",
 	"LMS1 chip version = 0x22",
 	"LMS2 chip version = 0x22",
+	"192.168.10.2",
 	"Init is done",
 	"eth link changed: speed = 1000")
 
 SAFE=(
 	"UmTRX bootloader",
+	"FPGA compatibility number: 9",
+	"Firmware: 12.3-8D7B9D84",
 	"SPI Flash has been initialized",
 	"Starting UmTRX in safe mode.",
 	"LMS1 chip version = 0x22",
 	"LMS2 chip version = 0x22",
+	"192.168.10.2",
 	"Init is done",
 	"eth link changed: speed = 1000")
 
