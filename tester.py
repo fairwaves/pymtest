@@ -9,6 +9,7 @@ import time
 import traceback
 import subprocess
 import socket
+import glob
 
 import bts_test
 import bts_params
@@ -47,14 +48,16 @@ class MainWindowImpl(QMainWindow, main_form):
         self.cbHosts.addItems(["manual", "local"])
         self.cbDevice.clear()
         self.cbDevice.addItems([ i for i in bts_params.HARDWARE_LIST.keys() ])
+        self.refreshPorts()
 
     def enable_controls(self, en):
         self.listWidget.setEnabled(en)
         self.btAll.setEnabled(en)
         self.btNone.setEnabled(en)
+        self.btPortRefresh.setEnabled(en)
         self.btFind.setEnabled(en)
         self.cbHosts.setEnabled(en)
-        self.lnPort.setEnabled(en)
+        self.cbPorts.setEnabled(en)
         self.cbDevice.setEnabled(en)
         self.cbCh1.setEnabled(en)
         self.cbCh2.setEnabled(en)
@@ -98,6 +101,10 @@ class MainWindowImpl(QMainWindow, main_form):
                 self.btStartStop.setText("Start")
                 self.enable_controls(True)
                 self.started = False
+
+    @pyqtSlot()
+    def on_btPortRefresh_clicked(self):
+        self.refreshPorts()
 
     @pyqtSlot()
     def on_btFind_clicked(self):
@@ -236,7 +243,7 @@ class MainWindowImpl(QMainWindow, main_form):
         #
         # Establish connection with CMD57 and configure it
         self.txConsole.appendPlainText("Establishing connection with the CMD57.")
-        cmd = bts_test.cmd57_init(self.lnPort.text())
+        cmd = bts_test.cmd57_init(self.cbPorts.currentText())
         if dut.startswith("UmTRX"):
             self.txConsole.appendPlainText("Set configuration Input 1; Output 2")
             cmd.set_io_used('I1O2')
@@ -372,6 +379,11 @@ class MainWindowImpl(QMainWindow, main_form):
         QApplication.processEvents()
         self.txConsole.appendHtml("<pre>%s</pre>" % str)
         QApplication.processEvents()
+
+    def refreshPorts(self):
+        ports = sorted(glob.glob('/dev/ttyUSB*'))
+        self.cbPorts.clear()
+        self.cbPorts.addItems(ports)
 
 class MyTestResults(bts_test.TestResults):
     def __init__(self, proxyfn, output_progressfn, checks):
