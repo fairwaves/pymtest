@@ -1,0 +1,3 @@
+[submodule "python-scpi"]
+	path = python-scpi
+	url = https://github.com/fairwaves/python-scpi
